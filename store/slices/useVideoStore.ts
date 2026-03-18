@@ -1,3 +1,4 @@
+// store/slices/useVideoStore.ts
 import { create } from 'zustand';
 import { Database } from '../../types/database/database.types';
 

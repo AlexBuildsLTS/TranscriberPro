@@ -11,7 +11,7 @@ import {
   LayoutAnimation,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useVideoStore } from '../../store/useVideoStore';
+import { useVideoStore } from './../../store/useVideoStore';
 import { useVideoData } from '../../hooks/queries/useVideoData';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Input } from '../../components/ui/Input';
@@ -104,15 +104,22 @@ export default function DashboardScreen() {
   const [logs, setLogs] = useState<TelemetryLog[]>([]);
   const [isUrlValid, setIsUrlValid] = useState(true);
 
+
   // Responsive Breakpoint Detection
   const { width: screenWidth } = Dimensions.get('window');
   const isMobile = screenWidth < 768;
 
   // Store Extraction
-  const processVideo = useVideoStore((state) => state.processVideo);
-  const isProcessing = useVideoStore((state) => state.isProcessing);
-  const currentVideoId = useVideoStore((state) => state.currentVideoId);
-  const storeError = useVideoStore((state) => state.error);
+  const isProcessing = useVideoStore(
+    (state: { isProcessing: any }) => state.isProcessing,
+  );
+  const currentVideoId = useVideoStore(
+    (state: { currentVideoId: any }) => state.currentVideoId,
+  );
+  const error = useVideoStore((state: { error: any }) => state.error);
+  const processVideo = useVideoStore(
+    (state: { processVideo: any }) => state.processVideo,
+  );
 
   // Real-time Pipeline Query
   const { data: videoData } = useVideoData(currentVideoId);
@@ -166,12 +173,13 @@ export default function DashboardScreen() {
     setIsUrlValid(true);
     addLog('HANDSHAKE_START', 'info');
 
-    const WORKSPACE_ID = '00000000-0000-0000-0000-000000000000';
+    const WORKSPACE_ID = ''; // no longer needed, useVideoStore fetches it
 
     if (processVideo) {
       try {
         // Send the universal URL to the Edge Function
-        await processVideo(youtubeUrl, WORKSPACE_ID);
+       await processVideo(youtubeUrl);
+        addLog('HANDSHAKE_SUCCESS', 'success');
       } catch (err) {
         addLog('UPLINK_TIMEOUT', 'error');
       }
@@ -250,7 +258,7 @@ export default function DashboardScreen() {
     isProcessing &&
     videoData?.status !== 'completed' &&
     videoData?.status !== 'failed';
-
+const clearError = useVideoStore((state: { clearError: any }) => state.clearError);
   return (
     <SafeAreaView className="flex-1 bg-[#020205]">
       <KeyboardAvoidingView
@@ -296,6 +304,8 @@ export default function DashboardScreen() {
             </View>
           </FadeIn>
 
+
+          {/* INPUT SECTION */}
           <View className="self-center w-full max-w-2xl px-2">
             {/* INPUT GLASS MODULE */}
             <FadeIn delay={200}>
@@ -307,10 +317,11 @@ export default function DashboardScreen() {
                   label="YOUTUBE LINK"
                   placeholder="https://www.youtube.com/..."
                   value={youtubeUrl}
-                  onChangeText={(v) => {
-                    setYoutubeUrl(v);
-                    if (!isUrlValid) setIsUrlValid(true);
-                  }}
+               onChangeText={(v) => {
+  setYoutubeUrl(v);
+  if (!isUrlValid) setIsUrlValid(true);
+  clearError(); // ADD THIS
+}}
                   autoCapitalize="none"
                   autoCorrect={false}
                   editable={!effectivelyLoading}
@@ -321,17 +332,17 @@ export default function DashboardScreen() {
                   onPress={handleTranscribe}
                   isLoading={effectivelyLoading}
                   variant="primary"
-                  className="py-5 md:py-6 mt-4 md:mt-6 shadow-2xl shadow-neon-cyan/20"
+                  className="py-5 mt-4 shadow-2xl md:py-6 md:mt-6 shadow-neon-cyan/20"
                 />
 
                 {/* ERROR FEEDBACK */}
-                {storeError && (
+                {error && ( 
                   <View className="p-6 mt-8 border bg-red-500/10 border-red-500/20 rounded-3xl">
                     <Text className="text-red-500 font-bold text-[10px] tracking-[4px] uppercase text-center mb-2">
                       FAULT_DETECTED
                     </Text>
                     <Text className="text-xs leading-5 text-center text-red-400/70">
-                      {storeError}
+                      {error}
                     </Text>
                   </View>
                 )}

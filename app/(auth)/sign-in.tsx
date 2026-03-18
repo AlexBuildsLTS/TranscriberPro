@@ -1,4 +1,11 @@
-import React, { useState, memo, useCallback, useEffect } from 'react';
+/**
+ * sign-in.tsx — Primary Authentication Screen
+ * Dual-mode login: Email/Password + Magic Link fallback.
+ * Integrates with Supabase Auth via useAuthStore (Zustand).
+ * Preserves "Liquid Neon" glassmorphism + NeuralOrb ambient FX.
+ */
+
+import React, { useState, memo, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -16,6 +23,9 @@ import { Link, useRouter } from 'expo-router';
 import { useAuthStore } from '../../store/useAuthStore';
 import {
   Mail,
+  Lock,
+  Eye,
+  EyeOff,
   Zap,
   Brain,
   Globe,
@@ -26,6 +36,7 @@ import {
 import Animated, {
   FadeInDown,
   FadeInRight,
+  FadeInUp,
   useSharedValue,
   useAnimatedStyle,
   withRepeat,
@@ -36,9 +47,15 @@ import Animated, {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { cn } from '../../lib/utils';
 import { Button } from '../../components/ui/Button';
+import { AuthValidator } from '../../utils/validators/auth';
 
+/* ── Static Assets ─────────────────────────────────────────────────────────── */
 const APP_ICON = require('../../assets/icon.png');
 
+/* ── Auth Mode Type ────────────────────────────────────────────────────────── */
+type AuthMode = 'password' | 'magic-link';
+
+/* ── Bento Feature Cards ───────────────────────────────────────────────────── */
 type BentoItem = { icon: any; title: string; desc: string };
 
 const BENTO_ITEMS: BentoItem[] = [
@@ -50,7 +67,7 @@ const BENTO_ITEMS: BentoItem[] = [
   {
     icon: Brain,
     title: 'Neural Analysis',
-    desc: 'Semantic extraction via Gemini 1.5 Pro models.',
+    desc: 'Semantic extraction via Anthropic Claude models.',
   },
   {
     icon: Globe,
@@ -59,6 +76,7 @@ const BENTO_ITEMS: BentoItem[] = [
   },
 ];
 
+/* ── Ambient Background Orb (Reanimated) ───────────────────────────────────── */
 const NeuralOrb = ({ delay = 0, color = '#00F0FF' }) => {
   const pulse = useSharedValue(0);
   const { width, height } = Dimensions.get('window');
@@ -96,23 +114,70 @@ const NeuralOrb = ({ delay = 0, color = '#00F0FF' }) => {
   );
 };
 
+/* ══════════════════════════════════════════════════════════════════════════════
+ * MAIN SCREEN — SignInScreen
+ * Responsive layout: sidebar (desktop) / stacked scroll (mobile).
+ * ══════════════════════════════════════════════════════════════════════════════ */
 export default function SignInScreen() {
-  const { signInWithMagicLink } = useAuthStore();
+  const { signInWithMagicLink, signInWithPassword } = useAuthStore();
   const router = useRouter();
   const { width } = useWindowDimensions();
   const isDesktop = width >= 1024;
 
+  /* ── Form State ──────────────────────────────────────────────────────────── */
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [authMode, setAuthMode] = useState<AuthMode>('password');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{
     type: 'error' | 'success';
     text: string;
   } | null>(null);
 
-  const handleLogin = useCallback(async () => {
+  /* ── Password Login Handler ──────────────────────────────────────────────── */
+  const handlePasswordLogin = useCallback(async () => {
     const trimmedEmail = email.trim();
-    if (!trimmedEmail) {
-      return setMessage({ type: 'error', text: 'Identity required.' });
+
+    /* Validate email via shared AuthValidator */
+    if (!AuthValidator.isValidEmail(trimmedEmail)) {
+      return setMessage({
+        type: 'error',
+        text: 'Valid email address required.',
+      });
+    }
+
+    /* Validate password presence and strength */
+    const passwordCheck = AuthValidator.isValidPassword(password);
+    if (!passwordCheck.valid) {
+      return setMessage({
+        type: 'error',
+        text: passwordCheck.error || 'Invalid password.',
+      });
+    }
+
+    setLoading(true);
+    setMessage(null);
+
+    const { error } = await signInWithPassword(trimmedEmail, password);
+
+    if (error) {
+      setMessage({ type: 'error', text: error });
+    } else {
+      /* Auth state listener in useAuthStore handles navigation */
+      router.replace('/(dashboard)');
+    }
+    setLoading(false);
+  }, [email, password, signInWithPassword, router]);
+
+  /* ── Magic Link Fallback Handler ─────────────────────────────────────────── */
+  const handleMagicLinkLogin = useCallback(async () => {
+    const trimmedEmail = email.trim();
+
+    if (!AuthValidator.isValidEmail(trimmedEmail)) {
+      return setMessage({
+        type: 'error',
+        text: 'Valid email address required.',
+      });
     }
 
     setLoading(true);
@@ -128,8 +193,16 @@ export default function SignInScreen() {
     setLoading(false);
   }, [email, signInWithMagicLink]);
 
+  /* ── Unified Submit Dispatcher ───────────────────────────────────────────── */
+  const handleLogin = useCallback(() => {
+    if (authMode === 'password') return handlePasswordLogin();
+    return handleMagicLinkLogin();
+  }, [authMode, handlePasswordLogin, handleMagicLinkLogin]);
+
+  /* ── Render ──────────────────────────────────────────────────────────────── */
   return (
     <View className="flex-1 bg-[#020205]">
+      {/* Ambient Neural Background */}
       <View className="absolute inset-0 overflow-hidden" pointerEvents="none">
         <NeuralOrb delay={0} color="#00F0FF" />
         <NeuralOrb delay={2500} color="#8A2BE2" />
@@ -141,6 +214,7 @@ export default function SignInScreen() {
           style={{ flex: 1 }}
         >
           {isDesktop ? (
+            /* ── Desktop: Sidebar + Scrollable Marketing ────────────────── */
             <View style={styles.desktopContainer}>
               <View style={styles.desktopSidebar}>
                 <View style={{ width: '100%', maxWidth: 420 }}>
@@ -148,6 +222,10 @@ export default function SignInScreen() {
                   <LoginFormContent
                     email={email}
                     setEmail={setEmail}
+                    password={password}
+                    setPassword={setPassword}
+                    authMode={authMode}
+                    setAuthMode={setAuthMode}
                     loading={loading}
                     onLogin={handleLogin}
                     message={message}
@@ -164,6 +242,7 @@ export default function SignInScreen() {
               </ScrollView>
             </View>
           ) : (
+            /* ── Mobile: Stacked Scroll ─────────────────────────────────── */
             <ScrollView
               style={styles.mobileScroll}
               contentContainerStyle={styles.mobileScrollContent}
@@ -175,6 +254,10 @@ export default function SignInScreen() {
                 <LoginFormContent
                   email={email}
                   setEmail={setEmail}
+                  password={password}
+                  setPassword={setPassword}
+                  authMode={authMode}
+                  setAuthMode={setAuthMode}
                   loading={loading}
                   onLogin={handleLogin}
                   message={message}
@@ -193,6 +276,11 @@ export default function SignInScreen() {
   );
 }
 
+/* ══════════════════════════════════════════════════════════════════════════════
+ * SUB-COMPONENTS
+ * ══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Brand Header: App icon + authenticator label ──────────────────────────── */
 const BrandHeader = memo(() => (
   <Animated.View
     entering={FadeInDown.duration(1000).springify()}
@@ -206,74 +294,202 @@ const BrandHeader = memo(() => (
 ));
 BrandHeader.displayName = 'BrandHeader';
 
+/* ── Login Form: Dual-mode (password / magic link) ─────────────────────────── */
 const LoginFormContent = memo(
-  ({ email, setEmail, loading, onLogin, message }: any) => (
-    <View className="neural-glass p-8">
-      <View style={{ gap: 24 }}>
-        <View>
-          <Text className="text-neon-cyan font-black text-[10px] tracking-widest uppercase mb-2 ml-1">
-            Operative Email
-          </Text>
-          <View className="bg-white/[0.02] border border-white/10 rounded-2xl h-14 flex-row items-center px-4 transition-all focus:border-neon-cyan/50">
-            <Mail size={18} color="#A1A1AA" />
-            <TextInput
-              className="flex-1 text-white font-medium ml-3 text-sm h-full outline-none"
-              placeholder="commander@enterprise.com"
-              placeholderTextColor="#475569"
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              editable={!loading}
-            />
-          </View>
-        </View>
+  ({
+    email,
+    setEmail,
+    password,
+    setPassword,
+    authMode,
+    setAuthMode,
+    loading,
+    onLogin,
+    message,
+  }: {
+    email: string;
+    setEmail: (v: string) => void;
+    password: string;
+    setPassword: (v: string) => void;
+    authMode: AuthMode;
+    setAuthMode: (v: AuthMode) => void;
+    loading: boolean;
+    onLogin: () => void;
+    message: { type: 'error' | 'success'; text: string } | null;
+  }) => {
+    const [showPassword, setShowPassword] = useState(false);
+    const passwordRef = useRef<TextInput>(null);
 
-        {message && (
-          <View
-            className={cn(
-              'p-4 border rounded-xl',
-              message.type === 'error'
-                ? 'bg-neon-pink/10 border-neon-pink/30'
-                : 'bg-neon-cyan/10 border-neon-cyan/30',
-            )}
-          >
-            <Text
+    return (
+      <View className="p-8 neural-glass">
+        <View style={{ gap: 20 }}>
+          {/* ── Auth Mode Toggle ──────────────────────────────────────── */}
+          <View className="flex-row bg-white/[0.03] border border-white/10 rounded-2xl p-1">
+            <TouchableOpacity
+              onPress={() => setAuthMode('password')}
               className={cn(
-                'text-center font-bold text-[10px] tracking-widest uppercase',
-                message.type === 'error' ? 'text-neon-pink' : 'text-neon-cyan',
+                'flex-1 py-3 rounded-xl items-center',
+                authMode === 'password'
+                  ? 'bg-neon-cyan/10 border border-neon-cyan/30'
+                  : 'border border-transparent',
               )}
+              activeOpacity={0.7}
             >
-              {message.text}
-            </Text>
-          </View>
-        )}
-
-        <Button
-          onPress={onLogin}
-          isLoading={loading}
-          title={loading ? 'UPLINKING...' : 'DEPLOY SECURE LINK'}
-          className="mt-2 py-4 shadow-lg shadow-neon-cyan/20"
-        />
-
-        <View className="flex-row items-center justify-center gap-2 mt-4">
-          <Text className="text-white/40 text-[10px] font-mono uppercase tracking-widest">
-            Unregistered?
-          </Text>
-          <Link href="/(auth)/sign-up" asChild>
-            <TouchableOpacity>
-              <Text className="font-bold text-neon-cyan text-[10px] uppercase tracking-widest">
-                Initialize Node
+              <Text
+                className={cn(
+                  'text-[10px] font-black uppercase tracking-widest',
+                  authMode === 'password' ? 'text-neon-cyan' : 'text-white/30',
+                )}
+              >
+                Password
               </Text>
             </TouchableOpacity>
-          </Link>
+            <TouchableOpacity
+              onPress={() => setAuthMode('magic-link')}
+              className={cn(
+                'flex-1 py-3 rounded-xl items-center',
+                authMode === 'magic-link'
+                  ? 'bg-neon-cyan/10 border border-neon-cyan/30'
+                  : 'border border-transparent',
+              )}
+              activeOpacity={0.7}
+            >
+              <Text
+                className={cn(
+                  'text-[10px] font-black uppercase tracking-widest',
+                  authMode === 'magic-link'
+                    ? 'text-neon-cyan'
+                    : 'text-white/30',
+                )}
+              >
+                Magic Link
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* ── Email Input ───────────────────────────────────────────── */}
+          <View>
+            <Text className="text-neon-cyan font-black text-[10px] tracking-widest uppercase mb-2 ml-1">
+              Operative Email
+            </Text>
+            <View className="bg-white/[0.02] border border-white/10 rounded-2xl h-14 flex-row items-center px-4">
+              <Mail size={18} color="#A1A1AA" />
+              <TextInput
+                className="flex-1 h-full ml-3 text-sm font-medium text-white outline-none"
+                placeholder="commander@enterprise.com"
+                placeholderTextColor="#475569"
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                returnKeyType={authMode === 'password' ? 'next' : 'done'}
+                onSubmitEditing={() => {
+                  if (authMode === 'password') passwordRef.current?.focus();
+                  else onLogin();
+                }}
+                editable={!loading}
+                autoComplete="email"
+                textContentType="emailAddress"
+              />
+            </View>
+          </View>
+
+          {/* ── Password Input (conditional on authMode) ──────────────── */}
+          {authMode === 'password' && (
+            <Animated.View entering={FadeInDown.duration(300).springify()}>
+              <Text className="text-neon-cyan font-black text-[10px] tracking-widest uppercase mb-2 ml-1">
+                Security Key
+              </Text>
+              <View className="bg-white/[0.02] border border-white/10 rounded-2xl h-14 flex-row items-center px-4">
+                <Lock size={18} color="#A1A1AA" />
+                <TextInput
+                  ref={passwordRef}
+                  className="flex-1 h-full ml-3 text-sm font-medium text-white outline-none"
+                  placeholder="Min. 8 characters"
+                  placeholderTextColor="#475569"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                  returnKeyType="go"
+                  onSubmitEditing={onLogin}
+                  editable={!loading}
+                  autoComplete="password"
+                  textContentType="password"
+                />
+                {/* Toggle password visibility */}
+                <TouchableOpacity
+                  onPress={() => setShowPassword((prev) => !prev)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  {showPassword ? (
+                    <EyeOff size={18} color="#A1A1AA" />
+                  ) : (
+                    <Eye size={18} color="#A1A1AA" />
+                  )}
+                </TouchableOpacity>
+              </View>
+            </Animated.View>
+          )}
+
+          {/* ── Status Message ────────────────────────────────────────── */}
+          {message && (
+            <View
+              className={cn(
+                'p-4 border rounded-xl',
+                message.type === 'error'
+                  ? 'bg-neon-pink/10 border-neon-pink/30'
+                  : 'bg-neon-cyan/10 border-neon-cyan/30',
+              )}
+            >
+              <Text
+                className={cn(
+                  'text-center font-bold text-[10px] tracking-widest uppercase',
+                  message.type === 'error'
+                    ? 'text-neon-pink'
+                    : 'text-neon-cyan',
+                )}
+              >
+                {message.text}
+              </Text>
+            </View>
+          )}
+
+          {/* ── Submit Button ─────────────────────────────────────────── */}
+          <Button
+            onPress={onLogin}
+            isLoading={loading}
+            title={
+              loading
+                ? 'UPLINKING...'
+                : authMode === 'password'
+                  ? 'AUTHENTICATE'
+                  : 'DEPLOY SECURE LINK'
+            }
+            className="py-4 mt-2 shadow-lg shadow-neon-cyan/20"
+          />
+
+          {/* ── Navigation: Sign Up ───────────────────────────────────── */}
+          <View className="flex-row items-center justify-center gap-2 mt-4">
+            <Text className="text-white/40 text-[10px] font-mono uppercase tracking-widest">
+              Unregistered?
+            </Text>
+            <Link href="/(auth)/sign-up" asChild>
+              <TouchableOpacity>
+                <Text className="font-bold text-neon-cyan text-[10px] uppercase tracking-widest">
+                  Initialize Node
+                </Text>
+              </TouchableOpacity>
+            </Link>
+          </View>
         </View>
       </View>
-    </View>
-  ),
+    );
+  },
 );
 LoginFormContent.displayName = 'LoginFormContent';
 
+/* ── Encryption Badge ──────────────────────────────────────────────────────── */
 const SecurityFooter = memo(() => (
   <View className="flex-row items-center justify-center mt-10 opacity-40">
     <Text className="text-white/80 text-[9px] font-black tracking-[2px] uppercase">
@@ -283,8 +499,10 @@ const SecurityFooter = memo(() => (
 ));
 SecurityFooter.displayName = 'SecurityFooter';
 
+/* ── Marketing / Feature Showcase Panel ────────────────────────────────────── */
 const MarketingContent = memo(({ isDesktop }: { isDesktop: boolean }) => (
   <View style={{ width: '100%', paddingBottom: 60 }}>
+    {/* Hero Headline */}
     <Animated.View
       entering={FadeInRight.duration(1200).springify().delay(200)}
       style={{ marginBottom: 40 }}
@@ -308,17 +526,18 @@ const MarketingContent = memo(({ isDesktop }: { isDesktop: boolean }) => (
       </Text>
     </Animated.View>
 
+    {/* Bento Feature Grid */}
     <View className="flex-row flex-wrap gap-5 mt-8">
       {BENTO_ITEMS.map((item, index) => (
         <Animated.View
-          key={index}
+          key={item.title}
           entering={FadeInRight.delay(200 + index * 100).springify()}
           className={cn('neural-glass p-8', isDesktop ? 'w-[48%]' : 'w-full')}
         >
-          <View className="w-12 h-12 bg-neon-cyan/10 rounded-2xl items-center justify-center mb-5">
+          <View className="items-center justify-center w-12 h-12 mb-5 bg-neon-cyan/10 rounded-2xl">
             <item.icon size={20} color="#00F0FF" />
           </View>
-          <Text className="text-white text-lg font-black uppercase tracking-wide mb-2">
+          <Text className="mb-2 text-lg font-black tracking-wide text-white uppercase">
             {item.title}
           </Text>
           <Text className="text-white/40 text-[10px] font-mono uppercase tracking-widest leading-5">
@@ -328,21 +547,26 @@ const MarketingContent = memo(({ isDesktop }: { isDesktop: boolean }) => (
       ))}
     </View>
 
+    {/* Social Links */}
     <View className="flex-row items-center justify-center gap-8 mt-20 opacity-40">
       <Youtube color="#FFFFFF" size={24} />
       <Twitter color="#FFFFFF" size={24} />
       <Github color="#FFFFFF" size={24} />
     </View>
 
-    <View className="mt-12 items-center md:items-start opacity-20">
+    {/* Build Revision Tag */}
+    <View className="items-center mt-12 md:items-start opacity-20">
       <Text className="text-white text-[9px] font-black uppercase tracking-[3px]">
-        NORTHOS REV 9.4.0 | PRODUCTION ENCLAVE
+        TRANSCRIBER-PRO v1.0.0 | CLAUDE ENGINE
       </Text>
     </View>
   </View>
 ));
 MarketingContent.displayName = 'MarketingContent';
 
+/* ══════════════════════════════════════════════════════════════════════════════
+ * STYLESHEET — Static layout dimensions
+ * ══════════════════════════════════════════════════════════════════════════════ */
 const styles = StyleSheet.create({
   desktopContainer: { flexDirection: 'row', flex: 1 },
   desktopSidebar: {

@@ -1,18 +1,13 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase/client';
-
-const extractYoutubeId = (url: string) => {
-  const match = url.match(
-    /(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&]{11})/,
-  );
-  return match ? match[1] : `unknown-${Date.now()}`;
-};
+import { extractYouTubeId } from '../utils/youtubeCaptions';
 
 interface VideoState {
   isProcessing: boolean;
   currentVideoId: string | null;
   error: string | null;
-  processVideo: (youtubeUrl: string, workspaceId: string) => Promise<void>;
+  clearError: () => void;
+  processVideo: (videoUrl: string) => Promise<void>;
 }
 
 export const useVideoStore = create<VideoState>((set) => ({
@@ -20,7 +15,9 @@ export const useVideoStore = create<VideoState>((set) => ({
   currentVideoId: null,
   error: null,
 
-  processVideo: async (youtubeUrl: string, workspaceId: string) => {
+  clearError: () => set({ error: null }),
+
+  processVideo: async (videoUrl: string) => {
     set({ isProcessing: true, error: null, currentVideoId: null });
 
     try {
@@ -28,17 +25,61 @@ export const useVideoStore = create<VideoState>((set) => ({
         data: { user },
         error: userError,
       } = await supabase.auth.getUser();
-      if (userError || !user) throw new Error('Not authenticated to system.');
+      if (userError || !user)
+        throw new Error('Not authenticated. Please sign in again.');
 
-      const videoId = extractYoutubeId(youtubeUrl);
+      const { data: memberData, error: memberError } = await supabase
+        .from('workspace_members')
+        .select('workspace_id')
+        .eq('user_id', user.id)
+        .limit(1)
+        .single();
 
-      // 1. Create the database record (Status: queued)
-      const { data, error } = await supabase
+      if (memberError || !memberData)
+        throw new Error('No workspace found. Please sign out and back in.');
+
+      const workspaceId = memberData.workspace_id;
+      const ytId = extractYouTubeId(videoUrl);
+
+      // ── Fetch captions via server-side proxy (no CORS issues) ──────────
+      // The get-captions edge function runs on Deno — no CORS restrictions.
+      // It calls Invidious/YouTube server-side and returns the transcript.
+      let clientTranscript: string | null = null;
+      let captionMethod = 'server';
+
+      if (ytId) {
+        try {
+          console.log('[Store] Fetching captions via server proxy for:', ytId);
+          const { data: captionData, error: captionError } =
+            await supabase.functions.invoke('get-captions', {
+              body: { video_id: ytId },
+            });
+
+          if (!captionError && captionData?.transcript) {
+            clientTranscript = captionData.transcript;
+            captionMethod = 'proxy_captions';
+            console.log(
+              '[Store] Proxy captions success:',
+              clientTranscript?.length,
+              'chars',
+            );
+          } else {
+            console.log(
+              '[Store] Proxy captions returned nothing, server will use Deepgram',
+            );
+          }
+        } catch (captionErr) {
+          console.warn('[Store] Caption proxy failed:', captionErr);
+        }
+      }
+
+      // ── Insert video record ────────────────────────────────────────────
+      const { data: videoData, error: insertError } = await supabase
         .from('videos')
         .insert([
           {
-            youtube_url: youtubeUrl,
-            youtube_video_id: videoId,
+            youtube_url: videoUrl,
+            youtube_video_id: ytId ?? null,
             workspace_id: workspaceId,
             uploaded_by: user.id,
             status: 'queued',
@@ -47,19 +88,36 @@ export const useVideoStore = create<VideoState>((set) => ({
         .select()
         .single();
 
-      if (error) throw error;
-      set({ currentVideoId: data.id });
+      if (insertError) throw insertError;
 
-      // 2. THE MISSING LINK: Actually tell the Edge Function to start working!
-      // This runs asynchronously in the background.
+      set({ currentVideoId: videoData.id });
+
+      // ── Invoke process-video — fire and forget ─────────────────────────
+      const body: Record<string, unknown> = {
+        video_id: videoData.id,
+        video_url: videoUrl,
+      };
+
+      if (clientTranscript) {
+        body.transcript_text = clientTranscript;
+        body.transcript_method = captionMethod;
+      }
+
       supabase.functions
-        .invoke('process-video', {
-          body: { video_id: data.id, youtube_url: youtubeUrl },
+        .invoke('process-video', { body })
+        .then(({ error: fnError }) => {
+          if (fnError)
+            console.warn('[Store] Edge function warning:', fnError.message);
         })
-        .catch((err) => console.error('Edge Function Invocation Error:', err));
-    } catch (err: any) {
-      console.error('Database Insert Error:', err);
-      set({ error: err.message, isProcessing: false });
+        .catch((err) =>
+          console.warn('[Store] Edge function invoke warning:', err),
+        );
+
+      set({ isProcessing: false });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      console.error('[Store] processVideo error:', message);
+      set({ error: message, isProcessing: false });
     }
   },
 }));

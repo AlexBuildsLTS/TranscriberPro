@@ -1,11 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Image } from 'react-native';
-import { BlurView } from 'expo-blur';
+import { View, Text, TouchableOpacity, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
-import { FadeIn } from '../animations/FadeIn';
 import { useAuthStore } from '../../store/useAuthStore';
 
-// Extracts initials from the user's full name for the avatar fallback
 const getInitials = (name?: string) => {
   if (!name) return 'U';
   return name
@@ -19,82 +16,160 @@ const getInitials = (name?: string) => {
 export const ProfileDropdown = () => {
   const [isOpen, setIsOpen] = useState(false);
   const router = useRouter();
-
-  // Pulling live auth data and the signOut method
   const { user, signOut } = useAuthStore();
-  const fullName = user?.user_metadata?.full_name || 'System Operator';
-  const email = user?.email || 'unregistered@node.local';
+  const fullName = user?.user_metadata?.full_name || 'Operator';
+  const email = user?.email || '';
 
   const handleSignOut = async () => {
+    setIsOpen(false);
     await signOut();
     router.replace('/(auth)/sign-in');
   };
 
   return (
-    <View className="relative items-end z-[999]">
-      {/* Dynamic Avatar Button */}
+    <View style={{ position: 'relative', alignItems: 'flex-end', zIndex: 999 }}>
+      {/* Avatar button */}
       <TouchableOpacity
         onPress={() => setIsOpen(!isOpen)}
-        className="w-12 h-12 rounded-full border border-neon-cyan/40 items-center justify-center bg-black/40 shadow-[0_0_15px_rgba(0,240,255,0.2)] overflow-hidden"
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: 22,
+          borderWidth: 1.5,
+          borderColor: 'rgba(0,240,255,0.4)',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          ...(Platform.OS === 'web'
+            ? ({
+                boxShadow: '0 0 15px rgba(0,240,255,0.2)',
+              } as any)
+            : {}),
+        }}
       >
-        {user?.user_metadata?.avatar_url ? (
-          <Image
-            source={{ uri: user.user_metadata.avatar_url }}
-            style={{ width: '100%', height: '100%' }}
-          />
-        ) : (
-          <Text className="font-mono text-lg font-black text-neon-cyan">
-            {getInitials(fullName)}
-          </Text>
-        )}
+        <Text
+          style={{
+            color: '#00F0FF',
+            fontFamily: 'monospace',
+            fontSize: 16,
+            fontWeight: '900',
+          }}
+        >
+          {getInitials(fullName)}
+        </Text>
       </TouchableOpacity>
 
-      {/* Glassmorphism Dropdown Menu */}
+      {/* Dropdown */}
       {isOpen && (
-        <FadeIn className="absolute top-16 right-0 w-64">
-          <View className="rounded-3xl border border-white/10 overflow-hidden shadow-2xl bg-black/60 backdrop-blur-xl">
-            <BlurView intensity={40} tint="dark" className="p-5">
-              {/* User Identity Info */}
-              <View className="pb-4 mb-4 border-b border-white/5">
-                <Text
-                  className="text-sm font-black tracking-widest text-white uppercase"
-                  numberOfLines={1}
-                >
-                  {fullName}
-                </Text>
-                <Text
-                  className="text-white/40 text-[10px] font-mono mt-1"
-                  numberOfLines={1}
-                >
-                  {email}
-                </Text>
-              </View>
-
-              {/* Navigation Node */}
-              <TouchableOpacity
-                onPress={() => {
-                  router.push('/settings');
-                  setIsOpen(false);
-                }}
-                className="py-3 items-center border border-white/5 rounded-xl bg-white/[0.02] mb-4"
-              >
-                <Text className="text-white/60 text-[10px] font-bold uppercase tracking-widest">
-                  ⚙ Parameters
-                </Text>
-              </TouchableOpacity>
-
-              {/* Termination Node */}
-              <TouchableOpacity
-                onPress={handleSignOut}
-                className="py-4 border bg-neon-pink/10 rounded-xl border-neon-pink/20"
-              >
-                <Text className="text-neon-pink text-[9px] font-black uppercase tracking-[3px] text-center">
-                  Terminate Session
-                </Text>
-              </TouchableOpacity>
-            </BlurView>
+        <View
+          style={{
+            position: 'absolute',
+            top: 52,
+            right: 0,
+            width: 240,
+            borderRadius: 20,
+            borderWidth: 1,
+            borderColor: 'rgba(255,255,255,0.08)',
+            backgroundColor: 'rgba(2,2,5,0.92)',
+            overflow: 'hidden',
+            ...(Platform.OS === 'web'
+              ? ({
+                  backdropFilter: 'blur(40px)',
+                  boxShadow:
+                    '0 8px 40px rgba(0,0,0,0.6), 0 0 1px rgba(255,255,255,0.1)',
+                } as any)
+              : {}),
+          }}
+        >
+          {/* User info */}
+          <View
+            style={{
+              padding: 16,
+              borderBottomWidth: 1,
+              borderBottomColor: 'rgba(255,255,255,0.05)',
+            }}
+          >
+            <Text
+              style={{
+                color: '#ffffff',
+                fontWeight: '900',
+                fontSize: 13,
+                textTransform: 'uppercase',
+                letterSpacing: 1,
+              }}
+              numberOfLines={1}
+            >
+              {fullName}
+            </Text>
+            <Text
+              style={{
+                color: 'rgba(255,255,255,0.35)',
+                fontSize: 10,
+                fontFamily: 'monospace',
+                marginTop: 3,
+              }}
+              numberOfLines={1}
+            >
+              {email}
+            </Text>
           </View>
-        </FadeIn>
+
+          {/* Settings link */}
+          <TouchableOpacity
+            onPress={() => {
+              router.push('/settings');
+              setIsOpen(false);
+            }}
+            style={{
+              margin: 10,
+              padding: 12,
+              borderRadius: 12,
+              backgroundColor: 'rgba(255,255,255,0.03)',
+              borderWidth: 1,
+              borderColor: 'rgba(255,255,255,0.06)',
+              alignItems: 'center',
+            }}
+          >
+            <Text
+              style={{
+                color: 'rgba(255,255,255,0.5)',
+                fontSize: 10,
+                fontWeight: '700',
+                textTransform: 'uppercase',
+                letterSpacing: 2,
+              }}
+            >
+              ⚙ Settings
+            </Text>
+          </TouchableOpacity>
+
+          {/* Sign out */}
+          <TouchableOpacity
+            onPress={handleSignOut}
+            style={{
+              margin: 10,
+              marginTop: 0,
+              padding: 13,
+              borderRadius: 12,
+              backgroundColor: 'rgba(255,0,127,0.08)',
+              borderWidth: 1,
+              borderColor: 'rgba(255,0,127,0.2)',
+              alignItems: 'center',
+            }}
+          >
+            <Text
+              style={{
+                color: '#FF007F',
+                fontSize: 9,
+                fontWeight: '900',
+                textTransform: 'uppercase',
+                letterSpacing: 3,
+              }}
+            >
+              Terminate Session
+            </Text>
+          </TouchableOpacity>
+        </View>
       )}
     </View>
   );

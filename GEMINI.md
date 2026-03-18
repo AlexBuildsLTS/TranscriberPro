@@ -27,3 +27,4 @@ Transcriber Pro is an enterprise-grade YouTube transcription SaaS targeting the 
 - Prioritize modularity. Keep services (`services/`), hooks (`hooks/`), and UI components (`components/ui/`) strictly separated.
 - Use standard RESTful or RPC calls to Supabase.
 - Always include robust error handling (`try/catch`) in Edge Functions and push failures back to the `videos.status` column as `failed` with an `error_message`.
+    

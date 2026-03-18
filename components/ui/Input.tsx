@@ -1,3 +1,9 @@
+/**
+ * Input.tsx — Core Design System Text Input
+ * Dark-mode-first with neon-cyan focus states.
+ * Used across auth, dashboard, and settings screens.
+ */
+
 import React from 'react';
 import { TextInput, TextInputProps, View, Text } from 'react-native';
 import { cn } from '../../lib/utils';
@@ -12,21 +18,26 @@ export const Input = React.forwardRef<TextInput, InputProps>(
     return (
       <View className="w-full mb-4">
         {label && (
-          <Text className="text-text-secondary mb-2 text-sm font-medium">
+          <Text className="text-neon-cyan font-black text-[10px] tracking-widest uppercase mb-2 ml-1">
             {label}
           </Text>
         )}
         <TextInput
           ref={ref}
-          placeholderTextColor="#A1A1AA"
+          placeholderTextColor="#475569"
           className={cn(
-            'w-full rounded-xl border border-cardBorder bg-card/50 px-4 py-4 text-black backdrop-blur-md focus:border-neon-cyan/50 focus:bg-card/80 transition-all',
+            'w-full rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-4 text-white text-sm font-medium outline-none',
+            'focus:border-neon-cyan/50',
             error && 'border-neon-pink/50 focus:border-neon-pink',
             className,
           )}
           {...props}
         />
-        {error && <Text className="text-neon-pink text-xs mt-1">{error}</Text>}
+        {error && (
+          <Text className="text-neon-pink text-[10px] font-bold uppercase tracking-widest mt-2 ml-1">
+            {error}
+          </Text>
+        )}
       </View>
     );
   },
