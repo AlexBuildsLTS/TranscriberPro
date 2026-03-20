@@ -71,7 +71,7 @@ export const AdaptiveLayout = ({ children }: { children: React.ReactNode }) => {
   const navItems = [
     { label: '⌬', path: '/', id: 'engine', title: 'ENGINE' },
     { label: '⧖', path: '/history', id: 'vault', title: 'VAULT' },
-    { label: '⚙', path: '/settings', id: 'params', title: 'PARAMS' },
+    { label: '⚙', path: '/settings', id: 'params', title: 'SETTINGS' },
   ];
 
   return (
@@ -122,7 +122,7 @@ export const AdaptiveLayout = ({ children }: { children: React.ReactNode }) => {
               />
             </TouchableOpacity>
 
-            <View className="flex-1 gap-y-12 mt-4">
+            <View className="flex-1 mt-4 gap-y-12">
               {navItems.map((item) => {
                 const isActive =
                   pathname === item.path ||
@@ -185,7 +185,7 @@ export const AdaptiveLayout = ({ children }: { children: React.ReactNode }) => {
                 <TouchableOpacity
                   key={item.id}
                   onPress={() => router.push(item.path as any)}
-                  className="items-center justify-center h-full w-20"
+                  className="items-center justify-center w-20 h-full"
                 >
                   <Text
                     className={cn(

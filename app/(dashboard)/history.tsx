@@ -106,7 +106,7 @@ export default function HistoryScreen() {
           <Text className="text-neon-pink font-black text-[10px] tracking-[5px] uppercase mb-4">
             Uplink_Error
           </Text>
-          <Text className="mb-8 text-xs text-center text-white/60 leading-relaxed">
+          <Text className="mb-8 text-xs leading-relaxed text-center text-white/60">
             {error instanceof Error ? error.message : 'Unknown Fault Detected.'}
           </Text>
           <TouchableOpacity
@@ -208,7 +208,7 @@ export default function HistoryScreen() {
                               </Text>
                             </View>
                           </View>
-                          <Text className="text-neon-cyan text-2xl opacity-50">
+                          <Text className="text-2xl opacity-50 text-neon-cyan">
                             ›
                           </Text>
                         </GlassCard>
@@ -222,10 +222,10 @@ export default function HistoryScreen() {
             <FadeIn delay={200}>
               <View>
                 <Text className="text-white/30 font-bold text-[10px] uppercase tracking-[5px] mb-4 ml-4">
-                  Historical_Logs
+                  HISTORY
                 </Text>
                 {groupedHistory.earlier.length === 0 ? (
-                  <View className="p-8 border border-white/5 rounded-3xl bg-black/40 items-center justify-center">
+                  <View className="items-center justify-center p-8 border border-white/5 rounded-3xl bg-black/40">
                     <Text className="text-white/20 text-[10px] font-mono uppercase tracking-widest italic">
                       No archived payloads found.
                     </Text>
@@ -243,14 +243,14 @@ export default function HistoryScreen() {
                           glowColor="purple"
                         >
                           <View className="flex-1">
-                            <Text className="text-sm font-bold text-white/90 uppercase tracking-wide">
-                              Operation_{typeof item.id === 'string' ? item.id.slice(0, 8) : String(item.id).slice(0, 8)}
+                            <Text className="text-sm font-bold tracking-wide uppercase text-white/90">
+                              Engine Logs {typeof item.id === 'string' ? item.id.slice(0, 8) : String(item.id).slice(0, 8)}
                             </Text>
                             <Text className="text-white/30 text-[9px] font-mono mt-2 uppercase tracking-widest">
                               {format(new Date(item.created_at), 'yyyy-MM-dd')}
                             </Text>
                           </View>
-                          <Text className="text-neon-purple text-2xl opacity-40">
+                          <Text className="text-2xl text-neon-purple opacity-40">
                             ›
                           </Text>
                         </GlassCard>

@@ -314,7 +314,7 @@ const clearError = useVideoStore((state: { clearError: any }) => state.clearErro
                 className={cn('bg-white/[0.01]', isMobile ? 'p-6' : 'p-12')}
               >
                 <Input
-                  label="YOUTUBE LINK"
+                  label="VIDEO LINK"
                   placeholder="https://www.youtube.com/..."
                   value={youtubeUrl}
                onChangeText={(v) => {

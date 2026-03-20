@@ -62,14 +62,14 @@ const SETTING_MODULES = [
   {
     id: 'profile',
     title: 'Identity Config',
-    desc: 'Avatar, Username, Operative Data',
+    desc: 'Avatar, Username, Bio',
     color: 'cyan',
     textClass: 'text-neon-cyan',
   },
   {
     id: 'security',
     title: 'Security Protocols',
-    desc: 'Cryptographic Keys, Biometrics',
+    desc: 'Account Security, Keys, Biometrics',
     color: 'pink',
     textClass: 'text-neon-pink',
   },
@@ -114,7 +114,7 @@ export default function SettingsHubScreen() {
               </Text>
             </View>
             <Text className="text-4xl md:text-6xl font-black text-white tracking-tighter uppercase text-center leading-[45px] md:leading-[55px]">
-               <Text className="text-cyan/40">SETTINGS</Text>
+              <Text className="text-cyan/40">SETTINGS</Text>
             </Text>
             <View className="h-[2px] w-16 md:w-20 bg-neon-cyan mt-6 md:mt-8 rounded-full shadow-[0_0_20px_#00F0FF]" />
           </View>
@@ -133,7 +133,7 @@ export default function SettingsHubScreen() {
                     className="flex-row items-center p-6 md:p-8 bg-white/[0.01]"
                   >
                     <View className="flex-1">
-                      <Text className="text-lg md:text-xl font-bold text-white uppercase tracking-widest mb-2">
+                      <Text className="mb-2 text-lg font-bold tracking-widest text-white uppercase md:text-xl">
                         {mod.title}
                       </Text>
                       <Text className="text-[10px] text-white/40 font-mono uppercase tracking-widest">

@@ -166,7 +166,7 @@ export const ProfileDropdown = () => {
                 letterSpacing: 3,
               }}
             >
-              Terminate Session
+              SIGN OUT
             </Text>
           </TouchableOpacity>
         </View>

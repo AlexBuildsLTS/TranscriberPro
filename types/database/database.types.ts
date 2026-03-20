@@ -447,6 +447,14 @@ export type Database = {
       show_limit: { Args: never; Returns: number };
       show_trgm: { Args: { '': string }; Returns: string[] };
       unaccent: { Args: { '': string }; Returns: string };
+      update_video_status: {
+        Args: {
+          p_error_message?: string;
+          p_status: Database['public']['Enums']['video_status'];
+          p_video_id: string;
+        };
+        Returns: undefined;
+      };
     };
     Enums: {
       user_tier: 'free' | 'pro' | 'enterprise';
