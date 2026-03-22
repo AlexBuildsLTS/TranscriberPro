@@ -4,8 +4,7 @@ const path = require('path');
 
 const config = getDefaultConfig(__dirname);
 
-// THE KILL SWITCH: Force Metro to use the CommonJS version of Zustand
-// so the web browser never sees the toxic "import.meta" syntax.
+// 1. THE ZUSTAND KILL SWITCH (Essential for stability)
 config.resolver.resolveRequest = (context, moduleName, platform) => {
   if (moduleName === 'zustand' || moduleName.startsWith('zustand/')) {
     return {
@@ -16,7 +15,16 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
   return context.resolveRequest(context, moduleName, platform);
 };
 
+// 2. Faster Resolution
 config.resolver.nodeModulesPaths = [path.resolve(__dirname, './node_modules')];
+
+// 3. The ONLY performance flag that matters (Faster App Startup)
+config.transformer.getTransformOptions = async () => ({
+  transform: {
+    experimentalImportSupport: false,
+    inlineRequires: true, // This makes the app load screens faster!
+  },
+});
 
 module.exports = withNativeWind(config, {
   input: './global.css',

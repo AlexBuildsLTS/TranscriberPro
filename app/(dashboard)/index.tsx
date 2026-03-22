@@ -103,6 +103,12 @@ export default function DashboardScreen() {
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [logs, setLogs] = useState<TelemetryLog[]>([]);
   const [isUrlValid, setIsUrlValid] = useState(true);
+  const [selectedLanguage, setSelectedLanguage] = useState('English');
+
+  const OUTPUT_LANGUAGES = [
+    'English', 'Spanish', 'French', 'German', 'Italian',
+    'Portuguese', 'Dutch', 'Swedish', 'Russian', 'Japanese', 'Korean', 'Chinese',
+  ];
 
 
   // Responsive Breakpoint Detection
@@ -178,7 +184,7 @@ export default function DashboardScreen() {
     if (processVideo) {
       try {
         // Send the universal URL to the Edge Function
-       await processVideo(youtubeUrl);
+       await processVideo(youtubeUrl, selectedLanguage);
         addLog('HANDSHAKE_SUCCESS', 'success');
       } catch (err) {
         addLog('UPLINK_TIMEOUT', 'error');
@@ -326,6 +332,42 @@ const clearError = useVideoStore((state: { clearError: any }) => state.clearErro
                   autoCorrect={false}
                   editable={!effectivelyLoading}
                 />
+
+                {/* OUTPUT LANGUAGE SELECTOR */}
+                <View className="mt-6">
+                  <Text className="text-white/20 text-[8px] font-bold uppercase tracking-[4px] mb-3">
+                    Output Language
+                  </Text>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ gap: 8 }}
+                  >
+                    {OUTPUT_LANGUAGES.map((lang) => {
+                      const active = lang === selectedLanguage;
+                      return (
+                        <TouchableOpacity
+                          key={lang}
+                          onPress={() => setSelectedLanguage(lang)}
+                          disabled={effectivelyLoading}
+                          className={`px-4 py-2 rounded-full border ${
+                            active
+                              ? 'bg-neon-cyan/15 border-neon-cyan/50'
+                              : 'bg-white/[0.03] border-white/10'
+                          }`}
+                        >
+                          <Text
+                            className={`text-[9px] font-bold uppercase tracking-widest ${
+                              active ? 'text-neon-cyan' : 'text-white/30'
+                            }`}
+                          >
+                            {lang}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
 
                 <Button
                   title={effectivelyLoading ? 'PROCESSING...' : 'START'}

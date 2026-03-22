@@ -1,5 +1,4 @@
 /**
- * utils/youtubeCaptions.ts
  *
  * Client-side YouTube caption fetcher.
  * ALL requests go through corsproxy.io — including the final signed caption URL.
@@ -37,13 +36,16 @@ async function proxyFetch(
   targetUrl: string,
   timeoutMs = 10000,
 ): Promise<Response | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(`${PROXY}${encodeURIComponent(targetUrl)}`, {
-      signal: AbortSignal.timeout(timeoutMs),
+      signal: controller.signal,
     });
-    if (!res.ok) return null;
-    return res;
+    clearTimeout(timeout);
+    return res.ok ? res : null;
   } catch (_) {
+    clearTimeout(timeout);
     return null;
   }
 }

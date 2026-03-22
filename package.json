@@ -4,10 +4,13 @@
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
+    "start:optimized": "node metro-optimization.js",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
+    "web:optimized": "expo start --web --clear --max-workers=1",
     "ts:check": "tsc --noEmit",
+    "metro:clear": "rm -rf .expo node_modules/.cache .metro",
     "supabase:start": "npx supabase start",
     "functions:serve": "npx supabase functions serve",
     "functions:deploy": "npx supabase functions deploy"

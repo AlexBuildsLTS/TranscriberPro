@@ -21,20 +21,13 @@
         "no-console",
         "no-debugger",
         "no-eval",
-        "no-implicit-any",
-        "no-implicit-returns",
         "no-non-null-asserted-optional-chain",
         "no-sparse-arrays",
         "no-undef",
         "no-unreachable",
         "no-var",
         "prefer-const",
-        "prefer-template",
-        "require-await",
-        "single-attribute-per-line",
-        "strict-null-check",
-        "triple-slash-reference",
-        "use-enum"
+        "prefer-as-const"
       ]
     },
     "exclude": [

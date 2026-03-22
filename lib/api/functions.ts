@@ -23,11 +23,16 @@ export const EdgeFunctions = {
    * Regenerates AI insights for a video that already has a transcript.
    * videoId must exist in the ai_insights table (upsert is used server-side).
    */
-  generateInsights: async (videoId: string, transcriptText: string) => {
+  generateInsights: async (
+    videoId: string,
+    transcriptText: string,
+    language = 'English',
+    difficulty = 'general',
+  ) => {
     const { data, error } = await supabase.functions.invoke(
       'generate-ai-insights',
       {
-        body: { videoId, text: transcriptText },
+        body: { videoId, text: transcriptText, language, difficulty },
       },
     );
     if (error) throw new Error(error.message ?? 'Failed to generate insights');

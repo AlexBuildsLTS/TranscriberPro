@@ -227,7 +227,7 @@ All tables have Row Level Security scoped to workspace membership.
 
 ---
 
-## Environment Variables
+## Environment Variables ALL CONFIRMED IN SUPABASE SECRETSD, AND .ENV AND VERCEL
 
 ### Client (.env)
 
@@ -236,13 +236,12 @@ EXPO_PUBLIC_SUPABASE_URL=https://<ref>.supabase.co
 EXPO_PUBLIC_SUPABASE_ANON_KEY=<anon_key>
 ```
 
-### Edge Function Secrets (Supabase Dashboard)
+### Edge Function Secrets (Supabase Dashboard) 
 
 ```
 DEEPGRAM_API_KEY
 GEMINI_API_KEY
-ANTHROPIC_API_KEY
-RAPIDAPI_KEY
+RAPIDAPI_KEY 
 ```
 
 `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` auto-injected.
@@ -251,26 +250,7 @@ RAPIDAPI_KEY
 
 ## Config Files (Correct State)
 
-### babel.config.js — CORRECT, do not modify
 
-```js
-module.exports = function (api) {
-  api.cache(true);
-  return {
-    presets: [
-      [
-        'babel-preset-expo',
-        {
-          jsxImportSource: 'nativewind',
-          unstable_transformImportMeta: true,
-        },
-      ],
-      'nativewind/babel',
-    ],
-    plugins: ['react-native-reanimated/plugin'],
-  };
-};
-```
 
 ### metro.config.js — CORRECT, do not modify
 
@@ -281,13 +261,4 @@ Zustand CJS resolver + withNativeWind wrapper.
 nativewind/preset + custom neon colors + blur extensions.
 
 ---
-
-## Package.json Cleanup Needed
-
-Remove these unnecessary deps (babel-preset-expo handles everything):
-
-```
-@babel/preset-env
-@babel/preset-react
-@babel/preset-typescript
 ```

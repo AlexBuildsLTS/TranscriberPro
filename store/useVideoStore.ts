@@ -1,20 +1,8 @@
-/**
- * store/useVideoStore.ts
- *
- * Orchestrates video submission:
- * 1. Insert video record (status = queued)
- * 2. Run client-side caption fetch (corsproxy → YouTube timedtext / watch page)
- * 3. Run client-side audio URL resolution (corsproxy → Piped / Invidious)
- * 4. Fire edge function with whatever the client gathered
- */
+// store/useVideoStore.ts - UPDATED for new schema
 
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase/client';
-import {
-  extractYouTubeId,
-  fetchYouTubeCaptions,
-} from '../utils/youtubeCaptions';
-import { fetchYouTubeAudioUrl } from '../utils/youtubeAudio';
+import { extractYouTubeId } from '../utils/youtubeCaptions';
 import type { Enums, TablesInsert } from '../types/database/database.types';
 
 export type VideoStatus = Enums<'video_status'>;
@@ -22,8 +10,9 @@ export type VideoStatus = Enums<'video_status'>;
 interface ProcessVideoPayload {
   video_id: string;
   video_url: string;
+  language?: string;
+  difficulty?: string;
   transcript_text?: string | null;
-  client_audio_url?: string | null;
 }
 
 interface VideoState {
@@ -34,7 +23,7 @@ interface VideoState {
   clearError: () => void;
   reset: () => void;
   updateVideoStatus: (videoId: string, status: VideoStatus) => void;
-  processVideo: (videoUrl: string) => Promise<void>;
+  processVideo: (videoUrl: string, language?: string) => Promise<void>;
 }
 
 const INITIAL_STATE = {
@@ -51,7 +40,7 @@ export const useVideoStore = create<VideoState>((set, get) => ({
   reset: () => set(INITIAL_STATE),
   updateVideoStatus: (_videoId, status) => set({ currentVideoStatus: status }),
 
-  processVideo: async (videoUrl: string) => {
+  processVideo: async (videoUrl: string, language: string = 'english') => {
     if (get().isProcessing) return;
 
     const ytId = extractYouTubeId(videoUrl);
@@ -60,32 +49,20 @@ export const useVideoStore = create<VideoState>((set, get) => ({
       return;
     }
 
-    set({ isProcessing: true, error: null, currentVideoId: null });
+    set({ isProcessing: true, error: null });
 
     try {
-      // 1. Get Auth Session (FIXED: Capture 'session' for the token)
       const {
         data: { session },
       } = await supabase.auth.getSession();
-
       const user = session?.user;
       if (!user || !session) throw new Error('Not authenticated.');
 
-      // 2. Get Workspace Member
-      const { data: member } = await supabase
-        .from('workspace_members')
-        .select('workspace_id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (!member) throw new Error('No workspace found.');
-
-      // 3. Insert video record
+      // Insert video record (no workspace_id needed anymore!)
       const videoInsert: TablesInsert<'videos'> = {
         youtube_url: videoUrl,
         youtube_video_id: ytId,
-        workspace_id: member.workspace_id,
-        uploaded_by: user.id,
+        user_id: user.id,
         status: 'queued',
       };
 
@@ -98,73 +75,57 @@ export const useVideoStore = create<VideoState>((set, get) => ({
       if (insertError || !video)
         throw insertError || new Error('Failed to create video record.');
 
-      // Store the string ID for use in filters
       const videoId = video.id;
       set({ currentVideoId: videoId, currentVideoStatus: 'queued' });
 
-      // 4. Client-side data gathering (parallel, non-fatal)
-      const [clientTranscript, clientAudioUrl] = await Promise.allSettled([
-        fetchYouTubeCaptions(ytId),
-        fetchYouTubeAudioUrl(videoUrl, ytId),
-      ]).then((results) => [
-        results[0].status === 'fulfilled' ? results[0].value : null,
-        results[1].status === 'fulfilled' ? results[1].value : null,
-      ]);
-
-      // 5. Fire Edge Function (FIXED: Headers use captured session)
+      // Fire edge function — let it handle ALL caption/audio/transcription
       const payload: ProcessVideoPayload = {
         video_url: videoUrl,
         video_id: videoId,
-        transcript_text: clientTranscript,
-        client_audio_url: clientAudioUrl,
+        language: language.toLowerCase(),
+        difficulty: 'standard',
+        transcript_text: null, // Edge function handles this
       };
 
-      supabase.functions
-        .invoke('process-video', {
+      try {
+        const { error: fnError } = await supabase.functions.invoke('process-video', {
           body: payload,
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        })
-        .then(async ({ error: fnError }) => {
-          if (fnError) {
-            console.error('[Store] Edge Function Error:', fnError.message);
-            // FIXED: Use videoId (string) instead of video (object)
-            await supabase
-              .from('videos')
-              .update({ status: 'failed', error_message: fnError.message })
-              .eq('id', videoId);
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
 
-            set({
-              currentVideoStatus: 'failed',
-              error: 'Processing failed to start.',
-            });
-          }
-        })
-        .catch(async (err) => {
-          console.error('[Store] Invoke Exception:', err);
-          // FIXED: Use videoId (string) instead of video (object)
+        if (fnError) {
+          console.error('[Store] Edge Function Error:', fnError.message);
           await supabase
             .from('videos')
-            .update({
-              status: 'failed',
-              error_message: 'Network error contacting Edge Function',
-            })
+            .update({ status: 'failed', error_message: fnError.message })
             .eq('id', videoId);
-
           set({
             currentVideoStatus: 'failed',
-            error: 'Network error while processing.',
+            error: 'Processing failed to start.',
           });
+        }
+      } catch (err) {
+        console.error('[Store] Invoke Exception:', err);
+        await supabase
+          .from('videos')
+          .update({
+            status: 'failed',
+            error_message: 'Network error contacting Edge Function',
+          })
+          .eq('id', videoId);
+        set({
+          currentVideoStatus: 'failed',
+          error: 'Network error while processing.',
         });
+      } finally {
+        set({ isProcessing: false });
+      }
     } catch (err: any) {
       console.error('[Store] Process Error:', err);
       set({
         error: err.message || 'An unexpected error occurred.',
         isProcessing: false,
       });
-    } finally {
-      set({ isProcessing: false });
     }
   },
 }));

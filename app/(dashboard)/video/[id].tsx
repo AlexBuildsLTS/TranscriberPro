@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo } from 'react';
+import { BlurView } from 'expo-blur';
 import {
   View,
   Text,
@@ -90,10 +91,13 @@ export default function VideoResultScreen() {
   return (
     <SafeAreaView className="flex-1 bg-[#020205]">
       {/* Dynamic Neural Aura */}
-      <Animated.View
-        style={[animatedBgStyle]}
-        className="absolute inset-0 bg-neon-cyan blur-[120px] rounded-full"
-      />
+      <View className="absolute inset-0 overflow-hidden">
+        <Animated.View
+          style={[animatedBgStyle]}
+          className="absolute inset-0 bg-neon-cyan rounded-full"
+        />
+        <BlurView intensity={80} tint="dark" className="absolute inset-0" />
+      </View>
 
       <ScrollView
         contentContainerStyle={{ padding: 24, paddingBottom: 150 }}
@@ -115,7 +119,7 @@ export default function VideoResultScreen() {
             </Text>
           </TouchableOpacity>
 
-          <View className="flex-row space-x-4">
+          <View className="flex-row gap-4">
             <TouchableOpacity
               onPress={onShare}
               className="p-2 border rounded-full bg-white/5 border-white/10"
@@ -246,12 +250,20 @@ export default function VideoResultScreen() {
 
 // Sub-components for better readability
 function LoadingState() {
+  const opacity = useSharedValue(0.4);
+  useEffect(() => {
+    opacity.value = withRepeat(withTiming(1, { duration: 1000 }), -1, true);
+  }, []);
+  const pulseStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+
   return (
     <View className="flex-1 bg-[#020205] items-center justify-center">
       <ActivityIndicator size="large" color="#00F0FF" />
-      <Text className="mt-8 text-[10px] font-bold tracking-[8px] text-neon-cyan uppercase animate-pulse">
-        Synchronizing_Neural_Vault
-      </Text>
+      <Animated.View style={pulseStyle}>
+        <Text className="mt-8 text-[10px] font-bold tracking-[8px] text-neon-cyan uppercase">
+          Synchronizing_Neural_Vault
+        </Text>
+      </Animated.View>
     </View>
   );
 }

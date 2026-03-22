@@ -166,7 +166,7 @@ export default function HistoryScreen() {
           <View className="items-center justify-center py-20">
             <ActivityIndicator size="large" color="#00F0FF" />
             <Text className="mt-6 text-[10px] font-bold tracking-[6px] text-neon-cyan uppercase">
-              Syncing_Archive...
+              Vault Loading...
             </Text>
           </View>
         ) : (

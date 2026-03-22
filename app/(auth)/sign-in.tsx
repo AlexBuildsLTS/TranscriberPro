@@ -502,7 +502,7 @@ const AuthForm = memo(
           <FormField label="Email" icon={Mail}>
             <TextInput
               className="flex-1 h-full ml-3 text-sm font-medium text-white outline-none"
-              placeholder="commander@enterprise.com"
+              placeholder="Enter Your Address"
               placeholderTextColor="#475569"
               value={email}
               onChangeText={setEmail}
