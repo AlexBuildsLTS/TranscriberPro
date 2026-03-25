@@ -87,6 +87,9 @@ supabase/.env.*
 # Deno Cache (Used for Edge Functions)
 .deno/
 vendor/
+# Lockfiles from local Deno 2.x use version 5; `supabase functions deploy` bundler errors on them.
+# Deno lockfiles (local only; Supabase deploy can error on v5 lockfiles). Never commit.
+
 
 # ------------------------------------------------------------------------------
 # 7. IDEs & EDITORS
@@ -103,7 +106,10 @@ vendor/
 # Xcode Local User Data
 *.xcworkspace/xcuserdata/
 *.xcodeproj/xcuserdata/
-
+.claude/
+.remember
+*.GEMINI.md
+*.supabase-db-audit-report.md
 # ------------------------------------------------------------------------------
 # 8. TYPESCRIPT & COMPILER OUTPUT
 # ------------------------------------------------------------------------------

@@ -92,7 +92,6 @@ port = 54323
 # External URL of the API server that frontend connects to.
 api_url = "http://127.0.0.1"
 # OpenAI API Key to use for Supabase AI in the Supabase Studio.
-openai_api_key = "env(OPENAI_API_KEY)"
 
 # Email testing server. Emails sent with the local dev setup are not actually sent - rather, they
 # are monitored, and you can view the emails that would have been sent from the web interface.
@@ -367,6 +366,13 @@ deno_version = 2
 
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
+
+# Browser CORS: OPTIONS preflight has no Authorization header. With verify_jwt = true (default),
+# the gateway returns 401 before the function runs — preflight fails. Disable gateway JWT check
+# and validate the Bearer token in code (see process-video/index.ts).
+[functions.process-video]
+verify_jwt = false
+
 
 [analytics]
 enabled = true

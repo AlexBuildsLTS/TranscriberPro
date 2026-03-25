@@ -1,18 +1,15 @@
 # ⚡ TranscriberPro: Enterprise Audio Intelligence Engine
 
-<div align="center">
-
-[![Platform](https://img.shields.io/badge/Platform-Web%20%7C%20iOS%20%7C%20Android-0A0D14.svg?style=flat-square&logo=expo)](https://expo.dev)
+[![Expo](https://img.shields.io/badge/Expo-SDK%2055-7d3301.svg?style=flat-square&logo=expo)](https://expo.dev)
 [![Framework](https://img.shields.io/badge/Framework-React%20Native%200.83-61DAFB.svg?style=flat-square&logo=react)](https://reactnative.dev)
-[![Expo](https://img.shields.io/badge/Expo-SDK%2055-000020.svg?style=flat-square&logo=expo)](https://expo.dev)
-[![Backend](https://img.shields.io/badge/Backend-Supabase-3ECF8E.svg?style=flat-square&logo=supabase)](https://supabase.com)
-[![AI](https://img.shields.io/badge/AI-Deepgram%20%7C%20Claude-8A2BE2.svg?style=flat-square)](https://anthropic.com)
-
-</div>
+[![Typescript](https://img.shields.io/badge/Typescript-040412.svg?style=flat-square&logo=typescript)](https://www.typescriptlang.org)
+[![Backend](https://img.shields.io/badge/Backend-Supabase-006112.svg?style=flat-square&logo=supabase)](https://supabase.com)
+[![Edge Functions](https://img.shields.io/badge/Edge%20Functions-DEEPGRAM%20API%20-0A0D14.svg?style=flat-square&logo=deno)](https://deno.com/deploy)
+[![AI](https://img.shields.io/badge/AI-Gemini%202.5%20Pro%20%7C%20DENO%20-12024d.svg?style=flat-square&logo=google)](https://ai.google.com/gemini/pro/)
 
 ---
 
-## 🚀 Vision: The 2026 Standard for Audio Intelligence
+## 🌐 Audio Intelligence 🌐
 
 **TranscriberPro** is an YouTube transcription and audio-intelligence platform engineered for the modern digital landscape, this project delivers fast, 95%+ accurate video-to-text conversion.
 
@@ -25,8 +22,8 @@ Designed for content creators, educational institutions, researchers, and compli
 | Strategic Pillar               | Technological Implementation                           | Market Value Proposition                                                                                     |
 | :----------------------------- | :----------------------------------------------------- | :----------------------------------------------------------------------------------------------------------- |
 | **1. Anti-Block Architecture** | Multi-proxy extraction via Deno Edge (`process-video`) | **Unstoppable Reliability:** Bypasses YouTube datacenter IP blocking, guaranteeing stream access.            |
-| **2. Lightning Transcription** | Deepgram Nova-2 API + Audio Chunking                   | **Sub-30s Processing:** `process-audio-chunk` handles massive files rapidly with 95%+ accuracy.              |
-| **3. AI Insight Engine**       | Anthropic Claude via Serverless Functions              | **Zero-Touch SEO:** `generate-ai-insights` auto-generates chapters, summaries, and high-conversion metadata. |
+| **2. Lightning Transcription** | Deepgram Nova-2 API + Audio Chunking                   | **Sub-30s Processing:** The `process-video` function handles massive files rapidly with 95%+ accuracy.              |
+| **3. AI Insight Engine**       | Google Gemini 2.5 Flash via Serverless Functions       | **Zero-Touch SEO:** The `process-video` function auto-generates chapters, summaries, and high-conversion metadata. |
 | **4. "Liquid Neon" UX**        | React Native + NativeWind v4 + GlassCards              | **Elite 120fps Experience:** A premium dark-mode Bento Box UI with cyan glassmorphism components.            |
 
 ---
@@ -42,7 +39,7 @@ sequenceDiagram
     participant Phase1 as getCaptions<br/>(4-method fallback)
     participant Phase2 as getAudioUrl<br/>(Innertube/Piped/Inv)
     participant Phase3 as Deepgram<br/>Nova-2 STT
-    participant Phase4 as Gemini 2.5 Pro<br/>AI Insights
+    participant Phase4 as Gemini 2.5 Flash<br/>AI Insights
     participant Realtime as useRealtimeVideoStatus
     participant Query as useVideoData
 
@@ -145,7 +142,7 @@ TranscriberPro
 Enterprise-grade YouTube transcription & audio intelligence platform.
 Converts any YouTube video to searchable text in under 30 seconds using
 a multi-stage AI pipeline — Deepgram Nova-2 for speech recognition and
-Anthropic Claude for zero-touch SEO metadata, chapter generation, and
+Google Gemini 2.5 Flash for zero-touch SEO metadata, chapter generation, and
 key takeaway extraction. Built for content creators, researchers, and
 compliance teams who need instant, accurate, structured transcripts
 with a 120fps glassmorphism UI.
@@ -153,7 +150,7 @@ with a 120fps glassmorphism UI.
 Tech Stack Badges:
 EXPO SDK 55 | REACT NATIVE 0.83 | TYPESCRIPT | REANIMATED V4
 NATIVEWIND V4 | SUPABASE (POSTGRESQL) | DENO EDGE FUNCTIONS
-DEEPGRAM NOVA-2 | ANTHROPIC CLAUDE | TANSTACK QUERY | ZUSTAND
+DEEPGRAM NOVA-2 | GOOGLE GEMINI 2.5 FLASH | TANSTACK QUERY | ZUSTAND
 
 ---
 
@@ -188,10 +185,14 @@ The project strictly adheres to Domain-Driven Design (DDD) tailored for Expo Rou
 ├── supabase/                 # Infrastructure as Code
 │   └── functions/            # Deno Edge Functions
 │       ├── _shared/          # Common utilities (auth.ts, cors.ts)
-│       ├── generate-ai-insights/ # Claude integration pipeline
-│       ├── process-audio-chunk/  # Deepgram interface
-│       ├── process-video/        # Initial extraction logic
-│       └── webhook-handler/      # External service webhooks
+│       ├── process-video/    # MONOLITHIC video processing pipeline
+│       │   ├── audio.ts      # - Audio extraction logic
+│       │   ├── captions.ts   # - 4-method caption fallback system
+│       │   ├── deepgram.ts   # - Deepgram Nova-2 interface
+│       │   ├── index.ts      # - Main function entrypoint
+│       │   ├── insights.ts   # - Gemini 2.5 Flash integration
+│       │   └── utils.ts      # - Shared utilities for this function
+│       └── webhook-handler/  # External service webhooks
 └── utils/                    # Helper Functions
     ├── formatters/           # Time and text formatting
     └── validators/           # Zod schemas (auth.ts, youtube.ts)
@@ -207,7 +208,7 @@ The frontend utilizes a hybrid approach. **Zustand** (`store/useAuthStore.ts`, `
 
 ### 2. The AI Insight Pipeline (GEMINI)
 
-Once `process-audio-chunk` securely writes the Deepgram transcription to PostgreSQL, a database trigger calls `generate-ai-insights`. This function passes the raw context to Anthropic's Claude. Claude's superior context window allows it to process entire 2-hour podcasts in a single prompt to return perfectly structured JSON containing key takeaways, timestamps, and SEO-optimized descriptions.
+Once the `process-video` function securely writes the Deepgram transcription to PostgreSQL, it passes the raw context to Google's Gemini 2.5 Flash. Its superior context window allows it to process entire 2-hour podcasts in a single prompt to return perfectly structured JSON containing key takeaways, timestamps, and SEO-optimized descriptions.
 
 ### 3. Real-Time UI Synchronization
 

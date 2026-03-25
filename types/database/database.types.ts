@@ -64,6 +64,50 @@ export type Database = {
           },
         ]
       }
+      batch_jobs: {
+        Row: {
+          completed_videos: number
+          created_at: string
+          failed_videos: number
+          id: string
+          name: string
+          status: string
+          total_videos: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_videos?: number
+          created_at?: string
+          failed_videos?: number
+          id?: string
+          name: string
+          status?: string
+          total_videos?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_videos?: number
+          created_at?: string
+          failed_videos?: number
+          id?: string
+          name?: string
+          status?: string
+          total_videos?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_jobs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_path: string | null
@@ -110,6 +154,7 @@ export type Database = {
         Row: {
           confidence_score: number | null
           created_at: string
+          extraction_method: string | null
           id: string
           language_code: string
           transcript_json: Json
@@ -120,6 +165,7 @@ export type Database = {
         Insert: {
           confidence_score?: number | null
           created_at?: string
+          extraction_method?: string | null
           id?: string
           language_code?: string
           transcript_json?: Json
@@ -130,6 +176,7 @@ export type Database = {
         Update: {
           confidence_score?: number | null
           created_at?: string
+          extraction_method?: string | null
           id?: string
           language_code?: string
           transcript_json?: Json
@@ -147,14 +194,68 @@ export type Database = {
           },
         ]
       }
+      usage_logs: {
+        Row: {
+          action: string
+          created_at: string
+          duration_seconds: number | null
+          id: string
+          metadata: Json | null
+          tokens_consumed: number | null
+          user_id: string
+          video_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          metadata?: Json | null
+          tokens_consumed?: number | null
+          user_id: string
+          video_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          metadata?: Json | null
+          tokens_consumed?: number | null
+          user_id?: string
+          video_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "usage_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "usage_logs_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "videos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       videos: {
         Row: {
           audio_url: string | null
+          batch_job_id: string | null
           created_at: string
           duration_seconds: number | null
           error_message: string | null
           id: string
+          last_retry_at: string | null
+          processing_completed_at: string | null
+          processing_duration_ms: number | null
           processing_provider: string | null
+          processing_started_at: string | null
+          retry_count: number | null
           status: Database["public"]["Enums"]["video_status"]
           thumbnail_url: string | null
           title: string | null
@@ -165,11 +266,17 @@ export type Database = {
         }
         Insert: {
           audio_url?: string | null
+          batch_job_id?: string | null
           created_at?: string
           duration_seconds?: number | null
           error_message?: string | null
           id?: string
+          last_retry_at?: string | null
+          processing_completed_at?: string | null
+          processing_duration_ms?: number | null
           processing_provider?: string | null
+          processing_started_at?: string | null
+          retry_count?: number | null
           status?: Database["public"]["Enums"]["video_status"]
           thumbnail_url?: string | null
           title?: string | null
@@ -180,11 +287,17 @@ export type Database = {
         }
         Update: {
           audio_url?: string | null
+          batch_job_id?: string | null
           created_at?: string
           duration_seconds?: number | null
           error_message?: string | null
           id?: string
+          last_retry_at?: string | null
+          processing_completed_at?: string | null
+          processing_duration_ms?: number | null
           processing_provider?: string | null
+          processing_started_at?: string | null
+          retry_count?: number | null
           status?: Database["public"]["Enums"]["video_status"]
           thumbnail_url?: string | null
           title?: string | null
@@ -194,6 +307,13 @@ export type Database = {
           youtube_video_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "videos_batch_job_id_fkey"
+            columns: ["batch_job_id"]
+            isOneToOne: false
+            referencedRelation: "batch_jobs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "videos_user_id_fkey"
             columns: ["user_id"]

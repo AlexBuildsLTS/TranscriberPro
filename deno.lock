@@ -1,0 +1,58 @@
+{
+  "version": "5",
+  "remote": {
+    "https://deno.land/std@0.200.0/async/delay.ts": "a6142eb44cdd856b645086af2b811b1fcce08ec06bb7d50969e6a872ee9b8659",
+    "https://deno.land/std@0.200.0/http/server.ts": "1b2403b3c544c0624ad23e8ca4e05877e65380d9e0d75d04957432d65c3d5f41",
+    "https://esm.sh/@google/generative-ai@0.21.0": "c50ac2729c07a30e82649ed868dbd424d8c37121206b74ded320559908856ff1",
+    "https://esm.sh/@supabase/supabase-js@2.39.7": "5361671c958daa350e504d9975da64b2d6dc9e81390b985ccdafb2e3572e24e7"
+  },
+  "workspace": {
+    "packageJson": {
+      "dependencies": [
+        "npm:@babel/core@^7.20.0",
+        "npm:@expo/metro-runtime@~55.0.6",
+        "npm:@supabase/supabase-js@^2.99.1",
+        "npm:@tanstack/react-query@^5.90.21",
+        "npm:@types/node@^25.5.0",
+        "npm:@types/react@~19.2.10",
+        "npm:axios@^1.6.0",
+        "npm:clsx@^2.1.0",
+        "npm:date-fns@3",
+        "npm:expo-audio@~55.0.9",
+        "npm:expo-av@15.0",
+        "npm:expo-blur@~55.0.10",
+        "npm:expo-clipboard@~55.0.9",
+        "npm:expo-constants@~55.0.8",
+        "npm:expo-file-system@~55.0.11",
+        "npm:expo-haptics@~55.0.9",
+        "npm:expo-image-picker@~55.0.13",
+        "npm:expo-linear-gradient@~55.0.9",
+        "npm:expo-linking@~55.0.8",
+        "npm:expo-local-authentication@~55.0.9",
+        "npm:expo-router@~55.0.6",
+        "npm:expo-secure-store@~55.0.9",
+        "npm:expo-status-bar@~55.0.4",
+        "npm:expo-video@~55.0.11",
+        "npm:expo@~55.0.6",
+        "npm:lucide-react-native@0.300",
+        "npm:nativewind@^4.2.2",
+        "npm:prop-types@^15.8.1",
+        "npm:react-dom@19.2.0",
+        "npm:react-native-gesture-handler@2.30",
+        "npm:react-native-reanimated@4.2.1",
+        "npm:react-native-safe-area-context@~5.6.2",
+        "npm:react-native-screens@4.23",
+        "npm:react-native-svg@15.15.3",
+        "npm:react-native-url-polyfill@3",
+        "npm:react-native-web@0.21",
+        "npm:react-native-worklets@0.7.2",
+        "npm:react-native@0.83.2",
+        "npm:react@19.2.0",
+        "npm:tailwind-merge@^2.2.0",
+        "npm:tailwindcss@^3.4.19",
+        "npm:typescript@^5.3.0",
+        "npm:zustand@^4.5.7"
+      ]
+    }
+  }
+}

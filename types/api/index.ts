@@ -1,10 +1,10 @@
 // This defines the strict shape of the JSON returned by Gemini and stored in Supabase.
 export interface AiInsightsPayload {
   summary: string;
-  chapterMarkers: Array<{ time: string; title: string }>;
+  chapterMarkers: ReadonlyArray<{ time: string; title: string }>;
   seo_metadata: {
-    seoTags: string[];
-    suggested_titles: string[];
+    seoTags: ReadonlyArray<string>;
+    suggested_titles: ReadonlyArray<string>;
     description: string;
   };
 }
@@ -23,6 +23,24 @@ export interface DeepgramWord {
 }
 
 /**
+ * Represents a single transcription alternative within a Deepgram channel.
+ * Includes the full transcript, a confidence score, and word-level details.
+ */
+export interface TranscriptAlternative {
+  transcript: string;
+  confidence: number;
+  words: ReadonlyArray<DeepgramWord>;
+}
+
+/**
+ * Represents a single audio channel from Deepgram's transcription API.
+ * Contains an array of transcription alternatives.
+ */
+export interface TranscriptChannel {
+  alternatives: ReadonlyArray<TranscriptAlternative>;
+}
+
+/**
  * Represents the JSON payload returned by Deepgram's transcription API.
  * The structure is deeply nested:
  * - `results.channels` is an array of audio channels (usually one for mono, two for stereo).
@@ -32,12 +50,6 @@ export interface DeepgramWord {
  */
 export interface TranscriptJsonPayload {
   results: {
-    channels: Array<{
-      alternatives: Array<{
-        transcript: string;
-        confidence: number;
-        words: DeepgramWord[];
-      }>;
-    }>;
+    channels: ReadonlyArray<TranscriptChannel>;
   };
 }

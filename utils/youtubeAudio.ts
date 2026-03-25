@@ -1,3 +1,5 @@
+import { createClient } from '@supabase/supabase-js';
+
 const PROXY = 'https://corsproxy.io/?';
 
 const PIPED_INSTANCES = [
@@ -15,6 +17,78 @@ const INVIDIOUS_INSTANCES = [
   'https://inv.tux.pizza',
   'https://yt.drgnz.club',
 ];
+/**
+ * RapidAPI key for YouTube audio extraction services
+ * Used as fallback method when Piped/Invidious instances are unavailable
+ */
+const RAPIDAPI_KEY = process.env.EXPO_PUBLIC_RAPIDAPI_KEY || '';
+const RAPIDAPI_HOST = 'yt-api.p.rapidapi.com';
+
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
+const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: false,
+  },
+  global: {
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 10,
+    },
+  },
+});
+
+interface RapidAPIAudioResponse {
+  status: string;
+  contents?: Array<{
+    videoRenderer?: {
+      videoId?: string;
+      thumbnail?: { thumbnails?: Array<{ url?: string }> };
+      title?: { runs?: Array<{ text?: string }> };
+    };
+  }>;
+  [key: string]: any;
+}
+
+/**
+ * Attempts to extract audio URL via RapidAPI YouTube endpoint
+ * Serves as premium fallback for client-side audio resolution
+ * @param ytId - YouTube video ID
+ * @returns Audio stream URL or null if extraction fails
+ */
+
+async function tryRapidAPI(ytId: string): Promise<string | null> {
+  try {
+    // FIX: Added the ?id= parameter
+    const target = `https://${RAPIDAPI_HOST}/dl?id=${ytId}`;
+    const res = await fetch(target, {
+      method: 'GET',
+      headers: {
+        'x-rapidapi-key': RAPIDAPI_KEY,
+        'x-rapidapi-host': RAPIDAPI_HOST,
+      },
+      signal: AbortSignal.timeout(8000),
+    });
+
+    if (!res.ok) return null;
+    const data: RapidAPIAudioResponse = await res.json();
+
+    // Check the specific response structure of your RapidAPI provider
+    if (data.status === 'ok' && data.link) {
+      return data.link;
+    }
+  } catch (error) {
+    console.error('[Audio] RapidAPI failed:', error);
+  }
+  return null;
+}
 
 interface PipedAudioStream {
   mimeType?: string;
@@ -100,6 +174,9 @@ export async function fetchYouTubeAudioUrl(
   if (process.env.NODE_ENV !== 'production') {
     console.log('[Audio] Attempting client-side audio resolution for:', ytId);
   }
+  // FIX: Actually call the RapidAPI fallback!
+  const rapid = await tryRapidAPI(ytId);
+  if (rapid) return rapid;
 
   const piped = await tryPiped(ytId);
   if (piped) return piped;

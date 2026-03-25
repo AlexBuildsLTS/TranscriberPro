@@ -1,14 +1,26 @@
+/**
+ * _shared/supabaseAdmin.ts
+ * Service role Supabase client for Edge Functions
+ */
+
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-export const createAdminClient = (): SupabaseClient => {
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-  if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error('Missing Supabase environment variables.');
-    }
-    
+/**
+ * Creates a Supabase client with service_role privileges.
+ * Use this for operations that need to bypass RLS.
+ */
+export function createAdminClient(): SupabaseClient {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-  return createClient(supabaseUrl, supabaseServiceKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+  }
+
+  return createClient(supabaseUrl, supabaseKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
   });
-};
+}
