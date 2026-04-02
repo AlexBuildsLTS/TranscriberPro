@@ -1,4 +1,11 @@
 .env
 .env.*
-.env.local
 !.env.example
+# Supabase
+.branches
+.temp
+
+# dotenvx
+.env.keys
+.env
+.env.*.local

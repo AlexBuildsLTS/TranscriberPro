@@ -1,40 +1,8 @@
 {
-  "expo": {
-    "name": "transcriber-pro",
-    "slug": "transcriber-pro",
-    "version": "1.0.0",
-    "scheme": "transcriber-pro",
-    "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
-    "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.transcriberpro.app"
-    },
-    "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/icon.png",
-        "backgroundColor": "#05050A"
-      },
-      "package": "com.transcriberpro.app"
-    },
-    "web": {
-      "bundler": "metro",
-      "output": "static",
-      "jsEngine": "jsc"
-    },
-    "plugins": [
-      "expo-router",
-      "expo-secure-store"
-    ],
-    "experiments": {
-      "typedRoutes": true,
-      "tsconfigPaths": true
-    }
-  },
-  "compilerOptions": {},
   "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true
+  },
   "include": [
     "**/*.ts",
     "**/*.tsx",

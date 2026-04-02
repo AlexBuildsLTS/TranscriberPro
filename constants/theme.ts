@@ -5,7 +5,7 @@
  */
 export const THEME = {
   colors: {
-    background: '#05050A',
+    background: '#020205',
     card: 'rgba(255, 255, 255, 0.03)',
     cardBorder: 'rgba(255, 255, 255, 0.08)',
     neon: {
