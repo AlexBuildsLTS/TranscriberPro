@@ -361,7 +361,7 @@ export default function SignInScreen() {
                 />
                 <SecurityFooter />
               </View>
-              <View className="h-[1px] bg-white/5 my-10 mx-6" />
+              <View className="h-[2px] bg-white/5 my-12 mx-8" />
               <View style={styles.mobilePane}>
                 <MarketingContent isDesktop={false} />
               </View>
@@ -380,12 +380,9 @@ export default function SignInScreen() {
 const BrandHeader = memo(({ authMode }: { authMode: AuthMode }) => (
   <Animated.View
     entering={FadeInDown.duration(1000).springify()}
-    style={styles.brandHeader}
+    style={{ alignItems: 'center', marginBottom: 32 }}
   >
     <Image source={APP_ICON} style={styles.brandIcon} resizeMode="contain" />
-    <Text className="text-white/40 font-mono text-[10px] uppercase tracking-[3px] mt-4 text-center">
-      {authMode === 'sign-in' ? 'Secure Authenticator Node' : 'CREATE ACCOUNT'}
-    </Text>
   </Animated.View>
 ));
 BrandHeader.displayName = 'BrandHeader';
@@ -395,7 +392,7 @@ const FormField = ({ label, icon: Icon, children }: any) => (
     <Text className="text-neon-cyan font-black text-[10px] tracking-widest uppercase mb-2 ml-1">
       {label}
     </Text>
-    <View className="bg-white/[0.02] border border-white/10 rounded-2xl h-14 flex-row items-center px-4">
+    <View className="bg-white/[0.02] border border-white/10 rounded-2xl h-16 flex-row items-center px-4">
       <Icon size={18} color="#A1A1AA" />
       {children}
     </View>
@@ -430,10 +427,10 @@ const AuthForm = memo(
       confirmPassword.length > 0 && password === confirmPassword;
 
     return (
-      <View className="p-8 border neural-glass rounded-3xl border-white/5 bg-black/40">
-        <View style={{ gap: 20 }}>
+      <View className="p-6 border neural-glass rounded-2xl border-white/5 bg-black/40">
+        <View style={{ gap: 15 }}>
           {/* Auth Toggle */}
-          <View className="flex-row bg-white/[0.03] border border-white/10 rounded-2xl p-1 mb-2">
+          <View className="flex-row bg-white/[0.03] border border-white/10 rounded-2xl p-1 mb-3">
             <TouchableOpacity
               onPress={() => setAuthMode('sign-in')}
               className={cn(
@@ -446,7 +443,7 @@ const AuthForm = memo(
               <Text
                 className={cn(
                   'text-[10px] font-black uppercase tracking-widest',
-                  !isSignUp ? 'text-neon-cyan' : 'text-white/30',
+                  !isSignUp ? 'text-neon-cyan' : 'text-white/50',
                 )}
               >
                 Sign In

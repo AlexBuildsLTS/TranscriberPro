@@ -298,8 +298,8 @@ export default function DashboardScreen() {
         language: selectedLanguage,
       });
       addLog('Pipeline successfully initiated.', 'success');
-    } catch (err: any) {
-      addLog(`Initialization failed: ${err.message}`, 'error');
+    } catch (err: unknown) {
+      addLog(`Initialization failed: ${err instanceof Error ? err.message : String(err)}`, 'error');
     }
   };
 
@@ -577,7 +577,7 @@ export default function DashboardScreen() {
                     effectivelyLoading ||
                     videoData?.status === 'completed') &&
                     statusInfo && (
-                      <View className="pt-8 mt-10 border-t border-white/60">
+                      <View className="pt-8 mt-10 border-t border-white/10">
                         <View className="flex-row justify-between mb-4">
                           <View>
                             <Text className="text-white/80 text-[10px] font-semibold uppercase tracking-[2px] mb-1">
@@ -648,7 +648,7 @@ export default function DashboardScreen() {
                   <Text className="text-white/80 text-[10px] font-semibold uppercase tracking-[2px] mb-3 ml-2">
                     System Logs
                   </Text>
-                  <View className="relative p-5 overflow-hidden border bg-[#1d1d49]/60 border-black/5 rounded-2xl min-h-[120px]">
+                  <View className="relative p-5 overflow-hidden border bg-[#1d1d49]/60 border-white/5 rounded-2xl min-h-[120px]">
                     {logs.length === 0 ? (
                       <Text className="mt-6 font-mono text-xs text-center text-white/80">
                         Awaiting input...
@@ -662,7 +662,7 @@ export default function DashboardScreen() {
                           <Text
                             className={cn(
                               'font-mono text-xs flex-1 leading-5',
-                              log.level === 'info' && 'text-cyan/70',
+                              log.level === 'info' && 'text-cyan-400/70',
                               log.level === 'warn' && 'text-amber-400',
                               log.level === 'error' && 'text-rose-400',
                               log.level === 'success' && 'text-emerald-400',

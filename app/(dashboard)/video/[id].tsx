@@ -270,7 +270,7 @@ const UnifiedMegaBox = React.memo(
               <View className="flex-row items-center px-4 py-2 border rounded-xl bg-cyan-500/10 border-cyan-500/30">
                 <BookOpen size={14} color="#00F0FF" />
                 <Text className="ml-3 text-[10px] font-black text-cyan-400 uppercase tracking-[4px]">
-                  Unified Intelligence Dossier
+                  Video Report
                 </Text>
               </View>
               <TouchableOpacity
@@ -283,13 +283,13 @@ const UnifiedMegaBox = React.memo(
                   <Copy size={16} color="#00F0FF" opacity={0.8} />
                 )}
                 <Text className="ml-3 text-[10px] font-black uppercase text-white/50 tracking-widest hidden md:flex">
-                  Copy Dossier
+                  Copy All
                 </Text>
               </TouchableOpacity>
             </View>
 
             <Text className="mb-6 text-4xl font-black leading-tight tracking-tighter text-white md:text-5xl lg:text-6xl">
-              {title || 'Decrypted Media Payload'}
+              {title || 'Untitled Video'}
             </Text>
 
             <View className="flex-row flex-wrap items-center gap-6 md:gap-10 opacity-80">
@@ -312,7 +312,7 @@ const UnifiedMegaBox = React.memo(
                 >
                   <ExternalLink size={16} color="#C084FC" />
                   <Text className="ml-3 text-purple-400 font-black text-[10px] uppercase tracking-widest">
-                    Source Entity
+                    View Source
                   </Text>
                 </TouchableOpacity>
               )}
@@ -335,22 +335,22 @@ const UnifiedMegaBox = React.memo(
                 <View className="flex-row items-center mb-8">
                   <Sparkles size={20} color="#C084FC" />
                   <Text className="text-purple-400 font-black text-[11px] md:text-xs uppercase tracking-[5px] ml-4">
-                    Executive Abstract
+                    Summary
                   </Text>
                 </View>
                 <Text className="text-white/90 leading-[32px] md:leading-[38px] text-base md:text-lg font-medium text-justify mb-12">
                   {summary || (
                     <Text className="italic opacity-50">
-                      AI Summary pending or unavailable.
+                      Summary pending or unavailable.
                     </Text>
                   )}
                 </Text>
 
-                {/* ── PART C: STRATEGIC INDICATORS (Takeaways) ── */}
+                {/* ── PART C: KEY TAKEAWAYS ── */}
                 {takeaways.length > 0 && (
                   <View className="p-8 border bg-black/20 border-white/5 rounded-[32px]">
                     <Text className="text-white/40 font-black text-[10px] uppercase tracking-[4px] mb-6">
-                      Strategic Indicators
+                      Key Takeaways
                     </Text>
                     <View className="gap-y-4">
                       {takeaways.map((point, idx) => (
@@ -381,7 +381,7 @@ const UnifiedMegaBox = React.memo(
                     <View className="flex-row items-center mb-10">
                       <Milestone size={20} color="#C084FC" />
                       <Text className="text-white/50 text-[11px] font-black uppercase tracking-[4px] ml-4">
-                        Timeline Mapping
+                        Chapters
                       </Text>
                     </View>
 
@@ -431,7 +431,7 @@ const UnifiedMegaBox = React.memo(
                   <View className="flex-row items-center mb-10">
                     <Zap size={20} color="#34D399" />
                     <Text className="text-white/50 text-[11px] font-black uppercase tracking-[4px] ml-4">
-                      Verbatim Data Stream
+                      Transcript
                     </Text>
                   </View>
 
@@ -466,7 +466,7 @@ const UnifiedMegaBox = React.memo(
                     <View className="items-center justify-center p-16 border border-white/5 rounded-[32px] bg-black/20">
                       <Terminal size={32} color="#ffffff20" />
                       <Text className="mt-6 font-mono text-xs text-white/30 uppercase tracking-[4px]">
-                        Data Stream Unavailable
+                        Transcript not available
                       </Text>
                     </View>
                   )}
@@ -483,7 +483,7 @@ const UnifiedMegaBox = React.memo(
 // ══════════════════════════════════════════════════════════════════════════════
 // 4. CONCLUDING SYNTHESIS BOX
 // ══════════════════════════════════════════════════════════════════════════════
-const ConcludingSynthesis = React.memo(() => (
+const ConcludingSynthesis = React.memo(({ conclusion }: { conclusion?: string }) => (
   <Animated.View
     entering={FadeInDown.duration(900).springify()}
     className="mb-20"
@@ -499,10 +499,7 @@ const ConcludingSynthesis = React.memo(() => (
         Concluding Synthesis
       </Text>
       <Text className="px-4 text-base font-medium leading-relaxed text-center text-white/70 md:text-lg md:px-10">
-        All strategic vectors have been successfully decrypted and logged. The
-        comprehensive intelligence brief, timeline mapping, and verbatim
-        transcript are preserved securely in the NorthOS Vault. Use the Export
-        Matrix above to download these assets for offline analysis.
+        {conclusion || 'Analysis complete. All intelligence has been extracted and preserved.'}
       </Text>
     </GlassCard>
   </Animated.View>
@@ -746,7 +743,9 @@ export default function MasterIntelligenceView() {
         />
 
         {/* 3. CONCLUDING SYNTHESIS BOX */}
-        {!isProcessing && isCompleted && <ConcludingSynthesis />}
+        {!isProcessing && isCompleted && (
+          <ConcludingSynthesis conclusion={(insights?.conclusion as string | null) ?? undefined} />
+        )}
       </Animated.ScrollView>
     </View>
   );

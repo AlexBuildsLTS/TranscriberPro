@@ -37,7 +37,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await get().refreshProfile();
       return { error: null };
     } catch (err: any) {
-      return { error: err.message || 'Invalid credentials.' };
+      return { error: err?.message || 'Invalid credentials.' };
     }
   },
 
@@ -54,7 +54,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
       return { error: null };
     } catch (err: any) {
-      return { error: err.message || 'Registration failed.' };
+      return { error: err?.message || 'Registration failed.' };
     }
   },
 
@@ -74,11 +74,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         .eq('id', session.user.id)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        // PGRST116 means "No rows returned". 
+        // This is common if the DB trigger hasn't created the profile yet.
+        if (error.code === 'PGRST116') {
+          console.warn('[Auth] Profile not found for this user yet.');
+          set({ profile: null });
+          return;
+        }
+        throw error;
+      }
+
       set({ profile: data });
     } catch (err: any) {
-      console.error('[Auth] Profile sync failed:', err.message);
-      set({ profile: null }); // Prevent crashing if profile is missing
+      // Properly extract the message from a Supabase PostgrestError object
+      const errorMessage = err?.message || JSON.stringify(err);
+      console.error('[Auth] Profile sync failed:', errorMessage);
+      set({ profile: null });
     }
   },
 

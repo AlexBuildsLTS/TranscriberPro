@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           ai_model: string
           chapters: Json
+          conclusion: string | null
           created_at: string
           id: string
           key_takeaways: Json
@@ -32,6 +33,7 @@ export type Database = {
         Insert: {
           ai_model?: string
           chapters?: Json
+          conclusion?: string | null
           created_at?: string
           id?: string
           key_takeaways?: Json
@@ -46,6 +48,7 @@ export type Database = {
         Update: {
           ai_model?: string
           chapters?: Json
+          conclusion?: string | null
           created_at?: string
           id?: string
           key_takeaways?: Json
@@ -247,27 +250,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      video: {
-        Row: {
-          id: number
-          title: string
-          youtube_url: string
-          youtube_video_id: string | null
-        }
-        Insert: {
-          id?: number
-          title: string
-          youtube_url: string
-          youtube_video_id?: string | null
-        }
-        Update: {
-          id?: number
-          title?: string
-          youtube_url?: string
-          youtube_video_id?: string | null
-        }
-        Relationships: []
       }
       videos: {
         Row: {

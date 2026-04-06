@@ -37,7 +37,7 @@ const MIME_TYPES: Record<ExportFormat, string> = {
 };
 
 // Defensive JSON parsers to prevent crashes from malformed Supabase JSON columns
-const safeArray = <T>(data: any): T[] => (Array.isArray(data) ? data : []);
+const safeArray = <T>(data: unknown): T[] => (Array.isArray(data) ? (data as T[]) : []);
 
 // ─── PLAIN TEXT ENGINE (EXECUTIVE TXT) ───────────────────────────────────────
 
@@ -231,7 +231,7 @@ function exportToVtt(data: ExportData, options: ExportOptions): string {
 // ─── JSON ENGINE ─────────────────────────────────────────────────────────────
 
 function exportToJson(data: ExportData, options: ExportOptions): string {
-  const output: Record<string, any> = {
+  const output: Record<string, unknown> = {
     metadata: {
       source: data.video.youtube_url,
       duration: data.video.duration_seconds,

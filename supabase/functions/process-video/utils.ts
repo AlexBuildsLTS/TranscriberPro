@@ -83,7 +83,7 @@ export function extractYouTubeId(url: string | null | undefined): string | null 
 
 /**
  * YouTube JSON3 Event Decoder.
- * Parses undocumented internal event streams into normalized text.
+ * Parses undocumented internal event streams into normalized text safely.
  */
 export function parseJson3(jsonData: unknown): string | null {
   if (!jsonData) return null;
@@ -97,7 +97,7 @@ export function parseJson3(jsonData: unknown): string | null {
       return null;
     }
 
-    // Use a more memory-efficient reduction for massive transcripts
+    // Memory-efficient reduction for massive transcripts
     const processedText = data.events
       .filter((event: Json3Event) => event.segs && Array.isArray(event.segs))
       .reduce((acc: string[], event: Json3Event) => {

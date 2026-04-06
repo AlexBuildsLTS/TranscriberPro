@@ -12,6 +12,9 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase/client';
 import { Database } from '../types/database/database.types';
+
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL as string;
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY as string;
 import { parseVideoUrl } from '../utils/videoParser';
 import { fetchClientCaptions } from '../utils/clientCaptions';
 import { ContentDifficulty, ProcessVideoRequest } from '../types/api';
@@ -134,8 +137,8 @@ export const useVideoStore = create<VideoState>((set, get) => ({
       if (error) throw error;
       set({ videos: data || [], error: null });
       recordEvent('DATA_SYNCED', 'success', `Loaded ${data?.length} historical records.`);
-    } catch (error: any) {
-      recordEvent('SYNC_FAILURE', 'error', error.message);
+    } catch (error: unknown) {
+      recordEvent('SYNC_FAILURE', 'error', error instanceof Error ? error.message : String(error));
     }
   },
 
@@ -218,11 +221,12 @@ export const useVideoStore = create<VideoState>((set, get) => ({
       };
 
       const edgeResponse = await fetch(
-        `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/process-video`,
+        `${SUPABASE_URL}/functions/v1/process-video`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY,
             Authorization: `Bearer ${session.access_token}`,
           },
           body: JSON.stringify(requestPayload),
@@ -245,16 +249,17 @@ export const useVideoStore = create<VideoState>((set, get) => ({
 
       await get().fetchUserVideos();
 
-    } catch (err: any) {
-      recordEvent('PIPELINE_CRASH', 'error', err.message);
-      set({ error: err.message, isProcessing: false });
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      recordEvent('PIPELINE_CRASH', 'error', errMsg);
+      set({ error: errMsg, isProcessing: false });
 
       if (targetDbId) {
         await supabase
           .from('videos')
           .update({
             status: 'failed',
-            error_message: err.message,
+            error_message: errMsg,
             processing_completed_at: new Date().toISOString()
           })
           .eq('id', targetDbId);

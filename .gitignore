@@ -50,7 +50,11 @@ supabase/db/data/
 *.md
 # Specifically ignore the DB audit reports you mentioned
 *.supabase-db-audit-report.md
+.STRUCTURE.md
+STRUCTURE.md
 
+repomix-output.xml
+repomix-output.md
 # --- 6. IDE & OS ---
 .vscode/
 .idea/
