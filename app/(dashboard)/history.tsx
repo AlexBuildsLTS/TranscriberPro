@@ -37,6 +37,7 @@ import Animated, {
   Easing,
   withSequence,
 } from 'react-native-reanimated';
+import { ArrowBigLeftDash } from 'lucide-react-native';
 
 // ─── AMBIENT BACKGROUND ORB ──────────────────────────────────────────────────
 const NeuralOrb = ({ delay = 0, color = '#00F0FF' }) => {
@@ -399,6 +400,22 @@ export default function HistoryScreen() {
               <View className="h-[2px] w-20 bg-blue-500 mt-6 md:mt-8 rounded-full shadow-[0_0_20px_#3B82F6]" />
             </View>
           </FadeIn>
+           <View className="flex-row items-center justify-between px-4 py-4 md:px-8">
+                       <TouchableOpacity
+                             onPress={() =>
+                               router.canGoBack()
+                                 ? router.back()
+                                 : router.replace('/history' as any)
+                             }
+                             className="flex-row items-center mb-10 gap-x-2"
+                             activeOpacity={0.7}
+                           >
+                             <ArrowBigLeftDash size={18} color="#00F0FF" />
+                             <Text className="text-[10px] font-black tracking-[4px] text-neon-cyan uppercase">
+                               Return
+                             </Text>
+                           </TouchableOpacity>
+                           </View>
 
           {/* VAULT CONTENT */}
           <View className="w-full max-w-2xl px-2">

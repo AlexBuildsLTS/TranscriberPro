@@ -1,47 +1,52 @@
 /**
  * supabase/functions/process-video/insights.ts
- * AI Insights Generation — Gemini 3.1 Flash-Lite
+ * Master AI Insights Generation — Gemini 3.1 Flash-Lite [TITAN TIER]
  * ----------------------------------------------------------------------------
- * FEATURES:
- * 1. STRICT SCHEMA ENFORCEMENT: Guarantees 100% valid JSON parsing.
- * 2. NATIVE TRANSLATION: Forces the AI to output values in the target language
- * while preserving English JSON keys to prevent database crashes.
- * 3. EXPONENTIAL BACKOFF: Survives 503s, 429s, and transient network errors.
+ * ARCHITECTURE & PROTOCOLS:
+ * 1. STRICT SCHEMA ENFORCEMENT: Guarantees 100% valid JSON payload parsing.
+ * 2. NATIVE TRANSLATION MATRIX: Forces flawless native translation of all 
+ * output values into the user's selected language, while strictly preserving 
+ * English JSON keys to maintain database schema integrity.
+ * 3. DYNAMIC CHRONOLOGY: AI autonomously determines chapter count (1-8) 
+ * based on raw media length, prioritizing deep, analytical summaries over volume.
+ * 4. SURVIVAL PROTOCOL: Exponential backoff handles 503s, 429s, and transient network errors.
+ * ----------------------------------------------------------------------------
  */
 
 import { GoogleGenerativeAI, SchemaType, ResponseSchema } from 'npm:@google/generative-ai@^0.24.1';
 
+// ─── INTELLIGENCE SCHEMA DEFINITION ──────────────────────────────────────────
 const InsightsSchema: ResponseSchema = {
   type: SchemaType.OBJECT,
   properties: {
     summary: {
       type: SchemaType.STRING,
       description:
-        'A highly professional, comprehensive executive summary. Dynamically scale the length and depth to adequately cover the core themes, arguments, and conclusions of the provided content. Provide a clear introduction, body, and synthesis. Do not use arbitrary length constraints.',
+        'A highly professional, comprehensive executive summary. Must scale dynamically in depth to perfectly cover the core themes, arguments, and conclusions of the entire content. Written with elite analytical precision.',
     },
     conclusion: {
       type: SchemaType.STRING,
       description:
-        'A concise, professional 2-3 sentence concluding synthesis. Distill the most important outcome or lesson from this content. What is the single most valuable thing a reader walks away with? Write it as a definitive closing statement, not a summary repetition.',
+        'A definitive, professional 2-3 sentence concluding synthesis. Distills the single most valuable outcome or lesson from the content. A powerful closing statement.',
     },
     chapters: {
       type: SchemaType.ARRAY,
       description:
-        'Chronological chapters representing natural topic transitions. Generate as many or as few as the content demands. Do not force chapters if the content is short and cohesive.',
+        'Between 1 and 8 chronological chapters. The AI must scale this dynamically based on video length. Long videos get fewer, but massively detailed chapters.',
       items: {
         type: SchemaType.OBJECT,
         properties: {
           timestamp: {
             type: SchemaType.STRING,
-            description: 'Estimated timestamp in MM:SS or HH:MM:SS format, inferred from the transcript flow.',
+            description: 'Estimated starting timestamp in MM:SS or HH:MM:SS format.',
           },
           title: {
             type: SchemaType.STRING,
-            description: 'A concise, professional title for this segment.',
+            description: 'A highly professional, engaging title for this specific segment.',
           },
           description: {
             type: SchemaType.STRING,
-            description: 'A detailed explanation of the specific points covered in this chapter.',
+            description: 'An extensive, deeply accurate explanation of the specific points, arguments, and events covered in this chapter.',
           },
         },
         required: ['timestamp', 'title', 'description'],
@@ -50,26 +55,26 @@ const InsightsSchema: ResponseSchema = {
     key_takeaways: {
       type: SchemaType.ARRAY,
       description:
-        'The most important, actionable insights from this content. Extract points that provide genuine value. Let the content dictate the quantity — do not pad or truncate.',
+        'The absolute most important, profound, and actionable insights extracted from the content. Maximum of 5 to 8 takeaways.',
       items: { type: SchemaType.STRING },
     },
     seo_metadata: {
       type: SchemaType.OBJECT,
-      description: 'SEO-optimized metadata for content discovery.',
+      description: 'Highly optimized SEO metadata for content categorization and discovery.',
       properties: {
         tags: {
           type: SchemaType.ARRAY,
-          description: 'Relevant keywords and topic tags.',
+          description: 'Highly relevant keywords and topic tags.',
           items: { type: SchemaType.STRING },
         },
         suggested_titles: {
           type: SchemaType.ARRAY,
-          description: 'Engaging, highly relevant alternative titles for this content.',
+          description: 'Engaging, highly accurate alternative titles for the overarching content.',
           items: { type: SchemaType.STRING },
         },
         description: {
           type: SchemaType.STRING,
-          description: 'A compelling meta description optimized for search results.',
+          description: 'A compelling, accurate meta description optimized for search indexing.',
         },
       },
       required: ['tags', 'suggested_titles', 'description'],
@@ -78,6 +83,7 @@ const InsightsSchema: ResponseSchema = {
   required: ['summary', 'conclusion', 'chapters', 'key_takeaways', 'seo_metadata'],
 };
 
+// ─── TYPE DEFINITIONS ────────────────────────────────────────────────────────
 export type InsightsResult = {
   model: string;
   summary: string;
@@ -92,7 +98,11 @@ export type InsightsResult = {
   tokens_used: number;
 };
 
-// Extracts clean JSON even if Gemini wraps it in markdown or extra text
+// ─── UTILITY ENGINES ─────────────────────────────────────────────────────────
+
+/**
+ * Extracts clean JSON even if the AI model wraps it in markdown blocks or prepends text.
+ */
 function extractCleanJson(text: string): string {
   const start = text.indexOf('{');
   const end = text.lastIndexOf('}');
@@ -102,7 +112,9 @@ function extractCleanJson(text: string): string {
   return text.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
 }
 
-// Exponential backoff retry for transient Gemini errors (503, 429)
+/**
+ * Exponential backoff retry wrapper to survive transient Gemini API errors (503, 429).
+ */
 async function withRetry<T>(operation: () => Promise<T>, maxAttempts = 3): Promise<T> {
   let attempt = 0;
   while (attempt < maxAttempts) {
@@ -119,12 +131,17 @@ async function withRetry<T>(operation: () => Promise<T>, maxAttempts = 3): Promi
   throw new Error('Retry loop exhausted.');
 }
 
+/**
+ * Categorizes the raw transcript by word count to inform the AI's generation depth.
+ */
 function getContentCategory(transcript: string): 'short' | 'medium' | 'long' {
   const wordCount = transcript.split(/\s+/).length;
   if (wordCount < 1000) return 'short';
   if (wordCount < 5000) return 'medium';
   return 'long';
 }
+
+// ─── MAIN GENERATION PIPELINE ────────────────────────────────────────────────
 
 export async function generateInsights(
   transcript: string,
@@ -145,11 +162,11 @@ export async function generateInsights(
     generationConfig: {
       responseMimeType: 'application/json',
       responseSchema: InsightsSchema,
-      temperature: 0.2, // Low temperature for high factual accuracy
+      temperature: 0.15, // Ultra-low temperature for maximum factual accuracy and strict adherence
     },
   });
 
-  // Cap at 800k chars to stay safely within Flash-Lite context window limits
+  // Cap at 800k chars to stay safely within Flash-Lite's 1M context window limit
   const safeTranscript = transcript.length > 800000
     ? transcript.substring(0, 800000)
     : transcript;
@@ -169,7 +186,7 @@ export async function generateInsights(
     const elapsed = Date.now() - startTime;
     const tokens = result.response.usageMetadata?.totalTokenCount ?? 0;
 
-    console.log(`[Insights] ✓ Generated in ${elapsed}ms | Tokens: ${tokens} | Chapters: ${parsed.chapters?.length ?? 0}`);
+    console.log(`[Insights] ✓ Intelligence Generated in ${elapsed}ms | Tokens: ${tokens} | Chapters: ${parsed.chapters?.length ?? 0}`);
 
     return {
       model: targetModel,
@@ -187,6 +204,8 @@ export async function generateInsights(
   }
 }
 
+// ─── PROMPT ENGINEERING CORE ─────────────────────────────────────────────────
+
 function buildPrompt(
   transcript: string,
   language: string,
@@ -194,43 +213,40 @@ function buildPrompt(
   category: 'short' | 'medium' | 'long',
 ): string {
   const difficultyGuides: Record<string, string> = {
-    beginner: 'Use accessible language. Define technical terms clearly. Explain concepts as if to an eager beginner.',
-    standard: 'Balance clarity with professional precision. Briefly explain specialized terminology when it appears.',
-    advanced: 'Use precise technical, industry-standard language. Assume high domain expertise. Focus on nuanced, high-level insights.',
+    beginner: 'Use highly accessible, clear language. Define any complex terminology simply and accurately.',
+    standard: 'Maintain a pristine, professional executive tone. Balance analytical depth with optimal readability.',
+    advanced: 'Assume elite domain expertise. Use precise technical or industry-standard terminology. Provide nuanced, forensic-level analysis.',
   };
 
   const depthGuide = {
-    short: 'Write 2-3 substantial paragraphs for the summary. Chapters are optional unless clear topic shifts exist.',
-    medium: 'Write 3-4 paragraphs for the summary. Extract 3-6 distinct chapters.',
-    long: 'Write a comprehensive 4-5 paragraph executive summary. Extract 6-12 distinct, highly navigable chapters.',
+    short: 'Write a highly concentrated 2-paragraph summary. Output 1 to 3 distinct chapters based on natural shifts in the content.',
+    medium: 'Write an elite 3-4 paragraph executive summary. Output 3 to 6 detailed chapters mapping the chronology.',
+    long: 'Write a massive, profound 4-6 paragraph executive summary. Output exactly 5 to 8 major chronological chapters. Do not spam micro-chapters. Group large timeframes into massive, highly detailed chapter descriptions.',
   }[category];
 
-  return `You are an elite executive content analyst producing a publication-ready intelligence brief.
+  return `You are an elite, top-tier Senior Intelligence Analyst tasked with producing a flawless, publication-ready dossier.
 
-TASK: Analyze the transcript below and produce beautifully structured, high-value insights.
+TASK: Decrypt and analyze the verbatim transcript below to produce perfectly structured, extremely accurate insights.
 
 TARGET OUTPUT LANGUAGE: ${language}
-AUDIENCE: ${difficulty} — ${difficultyGuides[difficulty] ?? difficultyGuides.standard}
+AUDIENCE CALIBRATION: ${difficulty} — ${difficultyGuides[difficulty] ?? difficultyGuides.standard}
 
-CRITICAL TRANSLATION RULE:
-- The JSON keys MUST remain in English (exactly as defined in the schema: "summary", "conclusion", "chapters", etc.).
-- ALL string values inside the JSON (the actual summary, titles, descriptions, takeaways, tags) MUST be natively written and perfectly translated into ${language}.
-- Write with the authority, grammar, and polish of a native-speaking senior analyst in ${language}.
+CRITICAL TRANSLATION PROTOCOL (MANDATORY):
+1. The JSON keys MUST remain in pure English (e.g., "summary", "conclusion", "chapters").
+2. ALL string values INSIDE the JSON (the actual generated text, titles, descriptions, takeaways, tags) MUST be translated into ${language} with absolute grammatical perfection and native fluency. 
+3. Do not output English content inside the values if the Target Language is not English.
 
-GUIDELINES:
+CRITICAL COVERAGE PROTOCOL (MANDATORY):
+- You MUST process the narrative from the absolute 00:00 mark to the FINAL WORD of the transcript. Do not stop analyzing halfway through.
 - ${depthGuide}
-- Scale your response naturally to the depth and length of the transcript. Do not cut it short artificially.
-- The "conclusion" field must be exactly 2-3 sentences — a definitive, high-value closing statement that leaves a lasting impact. Do NOT just repeat the summary.
-- Extract highly meaningful, actionable key takeaways. Skip generic filler.
-- Chapter timestamps must be sequentially estimated from the narrative flow of the transcript.
-- All SEO fields must be highly engaging and relevant to the content.
+- Prioritize extreme quality and analytical depth over sheer volume. A summary of a chapter should be comprehensive, accurate, and highly professional.
 
 STRICT RULES:
 1. Your ENTIRE response must be valid JSON matching the schema exactly.
-2. NO markdown, NO preamble, NO "Here is the analysis..." text.
-3. Do not invent facts or hallucinate details not present in the transcript.
+2. NO markdown formatting outside of the JSON string values. NO preamble.
+3. Zero hallucinations. Extract data strictly from the provided text.
 
-TRANSCRIPT:
+VERBATIM TRANSCRIPT:
 """
 ${transcript}
 """`;
