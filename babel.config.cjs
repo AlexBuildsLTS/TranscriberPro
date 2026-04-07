@@ -1,5 +1,5 @@
 /**
- * babel.config.js
+ * babel.config.cjs
  * Corrected structure for NativeWind v4.
  */
 module.exports = function (api) {
@@ -15,8 +15,6 @@ module.exports = function (api) {
       ],
       'nativewind/babel',
     ],
-    plugins: [
-      'react-native-reanimated/plugin',
-    ],
+    plugins: ['react-native-reanimated/plugin'],
   };
 };

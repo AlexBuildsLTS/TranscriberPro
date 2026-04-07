@@ -21,6 +21,7 @@ export default function SettingsLayout() {
         <Stack.Screen name="profile" />
         <Stack.Screen name="security" />
         <Stack.Screen name="billing" />
+        <Stack.Screen name="support" />
       </Stack>
     </View>
   );

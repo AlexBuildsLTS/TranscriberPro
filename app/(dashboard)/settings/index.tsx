@@ -1,15 +1,9 @@
 /**
  * app/(dashboard)/settings/index.tsx
  * Sovereign NorthOS Settings Dashboard
- * ----------------------------------------------------------------------------
- * FEATURES:
- * 1. NATIVE SVG ANIMATION: Exact Reanimated translation of the audio/microchip SVG.
- * 2. FLUID UI/UX: Enhanced module cards with Lucide icons and hover/active states.
- * 3. RESPONSIVE ARCHITECTURE: Adapts padding, sizing, and layouts for Mobile/Web.
- * 4. AMBIENT ENGINE: Retains the neural orb background for thematic consistency.
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -18,23 +12,23 @@ import {
   Dimensions,
   Platform,
 } from 'react-native';
+import { ArrowBigLeftDash } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { GlassCard } from '../../../components/ui/GlassCard';
 import { FadeIn } from '../../../components/animations/FadeIn';
 import { cn } from '../../../lib/utils';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, ShieldCheck, Cpu, ChevronRight } from 'lucide-react-native';
+import {
+  User,
+  ShieldCheck,
+  Cpu,
+  ChevronRight,
+  LifeBuoy,
+  Terminal,
+} from 'lucide-react-native';
+import { useAuthStore } from '../../../store/useAuthStore';
 
-// ─── NATIVE SVG & REANIMATED IMPORTS ─────────────────────────────────────────
-import Svg, {
-  Rect,
-  Path,
-  Circle,
-  Line,
-  G,
-  ClipPath,
-  Defs,
-} from 'react-native-svg';
+import Svg, { Rect, Path, Circle, Line, G } from 'react-native-svg';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -49,6 +43,19 @@ import Animated, {
 
 const AnimatedLine = Animated.createAnimatedComponent(Line);
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
+// ─── TYPESCRIPT INTERFACE (Fixes the red errors) ─────────────────────────────
+interface SettingsCardItem {
+  id: string;
+  title: string;
+  desc: string;
+  color: string;
+  iconHex: string;
+  icon: any;
+  customBg?: string;
+  customBorder?: string;
+  routeOverride?: string;
+}
 
 // ─── AMBIENT BACKGROUND ORB ──────────────────────────────────────────────────
 const NeuralOrb = ({ delay = 0, color = '#00F0FF' }) => {
@@ -94,7 +101,6 @@ const AnimatedSettingsIcon = () => {
   const pulseNodes = useSharedValue(0);
 
   useEffect(() => {
-    // 1. Shield Float Animation
     floatY.value = withRepeat(
       withSequence(
         withTiming(-6, { duration: 2500, easing: Easing.inOut(Easing.ease) }),
@@ -104,7 +110,6 @@ const AnimatedSettingsIcon = () => {
       true,
     );
 
-    // 2. Network Nodes Pulse Animation
     pulseNodes.value = withRepeat(
       withSequence(
         withTiming(1, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
@@ -119,12 +124,10 @@ const AnimatedSettingsIcon = () => {
     transform: [{ translateY: floatY.value }],
   }));
 
-  // Pulse effect for the teal network nodes
   const nodeProps = useAnimatedProps(() => ({
     r: interpolate(pulseNodes.value, [0, 1], [10, 12]),
   }));
 
-  // Colors matching the provided shield asset
   const C = {
     navy: '#1A3370',
     yellow: '#F3CF60',
@@ -139,7 +142,6 @@ const AnimatedSettingsIcon = () => {
     <View
       style={{ width: 140, height: 140, alignSelf: 'center', marginBottom: 24 }}
     >
-      {/* 1. Main Laptop Background (Static) */}
       <View
         style={{
           position: 'absolute',
@@ -150,7 +152,6 @@ const AnimatedSettingsIcon = () => {
         }}
       >
         <Svg width="100%" height="100%" viewBox="0 0 200 200">
-          {/* Laptop Screen Body */}
           <Path
             d="M 20 50 L 20 160 L 180 160 L 180 50 Z"
             fill={C.white}
@@ -158,11 +159,7 @@ const AnimatedSettingsIcon = () => {
             strokeWidth="12"
             strokeLinejoin="round"
           />
-
-          {/* Faded Background Circle behind Shield */}
           <Circle cx="100" cy="100" r="50" fill={C.bgCircle} />
-
-          {/* Lower Purple Bar on Screen */}
           <Rect
             x="20"
             y="140"
@@ -172,16 +169,12 @@ const AnimatedSettingsIcon = () => {
             stroke={C.navy}
             strokeWidth="8"
           />
-
-          {/* Laptop Base/Keyboard Deck */}
           <Path
             d="M 10 170 L 190 170 C 195 170 200 175 200 180 L 200 190 C 200 195 195 200 190 200 L 10 200 C 5 200 0 195 0 190 L 0 180 C 0 175 5 170 10 170 Z"
             fill={C.lightPurple}
             stroke={C.navy}
             strokeWidth="12"
           />
-
-          {/* Trackpad Indentation */}
           <Path
             d="M 70 170 L 80 180 L 120 180 L 130 170"
             fill="none"
@@ -192,7 +185,6 @@ const AnimatedSettingsIcon = () => {
         </Svg>
       </View>
 
-      {/* 2. Floating Shield and Network Overlay (Animated) */}
       <Animated.View
         style={[
           { position: 'absolute', top: -5, left: 10, width: 120, height: 120 },
@@ -200,7 +192,6 @@ const AnimatedSettingsIcon = () => {
         ]}
       >
         <Svg width="100%" height="100%" viewBox="0 0 200 200">
-          {/* Network Connecting Lines (Purple) */}
           <G
             stroke={C.lightPurple}
             strokeWidth="10"
@@ -211,8 +202,6 @@ const AnimatedSettingsIcon = () => {
             <Line x1="150" y1="100" x2="120" y2="60" />
             <Line x1="100" y1="130" x2="100" y2="100" />
           </G>
-
-          {/* Network Nodes (Navy outer, Teal pulsing inner) */}
           <Circle cx="50" cy="100" r="16" fill={C.navy} />
           <AnimatedCircle
             cx="50"
@@ -220,7 +209,6 @@ const AnimatedSettingsIcon = () => {
             fill={C.teal}
             animatedProps={nodeProps}
           />
-
           <Circle cx="150" cy="100" r="16" fill={C.navy} />
           <AnimatedCircle
             cx="150"
@@ -228,7 +216,6 @@ const AnimatedSettingsIcon = () => {
             fill={C.teal}
             animatedProps={nodeProps}
           />
-
           <Circle cx="100" cy="135" r="16" fill={C.navy} />
           <AnimatedCircle
             cx="100"
@@ -236,8 +223,6 @@ const AnimatedSettingsIcon = () => {
             fill={C.teal}
             animatedProps={nodeProps}
           />
-
-          {/* The Main Shield */}
           <Path
             d="M 100 110 C 130 90 135 60 135 30 L 100 20 L 65 30 C 65 60 70 90 100 110 Z"
             fill={C.yellow}
@@ -245,8 +230,6 @@ const AnimatedSettingsIcon = () => {
             strokeWidth="12"
             strokeLinejoin="round"
           />
-
-          {/* The "T" inside the Shield */}
           <Path
             d="M 85 45 L 115 45 M 100 45 L 100 70"
             stroke={C.navy}
@@ -260,61 +243,90 @@ const AnimatedSettingsIcon = () => {
   );
 };
 
-// ─── MODULE DATA ENHANCED WITH ICONS ─────────────────────────────────────────
-const SETTING_MODULES = [
-  {
-    id: 'profile',
-    title: 'Identity Config',
-    desc: 'Avatar, Username, Bio',
-    color: 'cyan',
-    textClass: 'text-cyan-400',
-    icon: User,
-  },
-  {
-    id: 'security',
-    title: 'Security Protocols',
-    desc: 'Account Security, Keys, Biometrics',
-    color: 'pink',
-    textClass: 'text-rose-400',
-    icon: ShieldCheck,
-  },
-  {
-    id: 'billing',
-    title: 'Resource Allocation',
-    desc: 'System Tiers, Quotas, Usage',
-    color: 'purple',
-    textClass: 'text-purple-400',
-    icon: Cpu,
-  },
-] as const;
-
 // ─── MAIN SCREEN COMPONENT ───────────────────────────────────────────────────
 export default function SettingsHubScreen() {
   const router = useRouter();
   const { width } = Dimensions.get('window');
   const isMobile = width < 768;
 
+  const { profile } = useAuthStore();
+  const userRole = profile?.role || 'member';
+
+  // Apply the SettingsCardItem[] type here
+  const SETTING_MODULES: SettingsCardItem[] = useMemo(() => {
+    const modules: SettingsCardItem[] = [
+      {
+        id: 'profile',
+        title: 'USER',
+        desc: 'Avatar, Bio',
+        color: 'cyan',
+        iconHex: '#22d3ee',
+        icon: User,
+      },
+      {
+        id: 'security',
+        title: 'Security',
+        desc: 'Account Security, Biometrics, API Keys',
+        color: 'pink',
+        iconHex: '#fb7185',
+        icon: ShieldCheck,
+      },
+      {
+        id: 'billing',
+        title: 'BILLING & TOKENS',
+        desc: 'System Tiers, Quotas, Usage',
+        color: 'purple',
+        iconHex: '#c084fc',
+        icon: Cpu,
+      },
+      {
+        id: 'support',
+        title: 'SUPPORT',
+        desc: 'Help Desk, Active Tickets',
+        color: 'green',
+        iconHex: '#4ade80',
+        icon: LifeBuoy,
+        customBg: '#0c593840',
+        customBorder: '#0c5938',
+      },
+    ];
+
+    if (userRole === 'admin') {
+      modules.push({
+        id: 'admin',
+        title: 'ADMIN',
+        desc: 'Global Telemetry, User Directory',
+        color: 'red',
+        iconHex: '#ff4d6d',
+        icon: Terminal,
+        customBg: '#3d010e90',
+        customBorder: '#ff4d6d50',
+        routeOverride: '/admin',
+      });
+    }
+
+    return modules;
+  }, [userRole]);
+
   return (
     <SafeAreaView className="flex-1 bg-[#020205]">
-      {/* AMBIENT BACKGROUND */}
       <View className="absolute inset-0 overflow-hidden" pointerEvents="none">
-        <NeuralOrb delay={0} color="#00F0FF" />
-        <NeuralOrb delay={2500} color="#FF007F" />
+        <NeuralOrb delay={0} color="#3B82F6" />
+        <NeuralOrb delay={2500} color="#8B5CF6" />
       </View>
 
       <View className="flex-1 w-full" style={{ flex: 1 }}>
         <ScrollView
           style={{ flex: 1, width: '100%' }}
           contentContainerStyle={{
-            padding: isMobile ? 20 : 60,
-            paddingTop: isMobile ? 120 : 100,
+            padding: isMobile ? 16 : 60, // Reduced mobile padding
+            paddingTop: isMobile ? 100 : 100,
             paddingBottom: isMobile ? 140 : 200,
             flexGrow: 1,
             alignItems: 'center',
           }}
           showsVerticalScrollIndicator={false}
         >
-          {/* HEADER SECTION WITH ANIMATED SVG */}
           <FadeIn>
             <View className="items-center w-full max-w-2xl mb-10 md:mb-16">
               <View className="px-5 py-1.5 mb-8 border rounded-full bg-cyan-500/10 border-cyan-500/20">
@@ -325,58 +337,94 @@ export default function SettingsHubScreen() {
 
               <AnimatedSettingsIcon />
 
-              <Text
-                className={cn(
-                  'mt-4 font-black text-white tracking-tighter uppercase text-center leading-none',
-                  isMobile ? 'text-4xl' : 'text-6xl',
-                )}
-              ></Text>
               <View className="h-[2px] w-20 bg-cyan-400 mt-6 md:mt-8 rounded-full shadow-[0_0_20px_#22D3EE]" />
             </View>
           </FadeIn>
 
-          {/* SETTINGS MODULES LIST */}
+          <View className="flex-row items-center justify-between px-4 py-4 md:px-8">
+            <TouchableOpacity
+              onPress={() =>
+                router.canGoBack() ? router.back() : router.replace('/')
+              }
+              className="flex-row items-center mb-10 gap-x-2"
+              activeOpacity={0.7}
+            >
+              <ArrowBigLeftDash size={18} color="#00F0FF" />
+              <Text className="text-[10px] font-black tracking-[4px] text-neon-cyan uppercase">
+                Return
+              </Text>
+            </TouchableOpacity>
+          </View>
           <View className="w-full max-w-2xl px-2">
-            <View className="gap-y-6">
+            <View className="gap-y-4 md:gap-y-6">
               {SETTING_MODULES.map((mod, index) => (
                 <FadeIn key={mod.id} delay={index * 100}>
                   <TouchableOpacity
-                    onPress={() => router.push(`/settings/${mod.id}` as any)}
+                    onPress={() => {
+                      if (mod.routeOverride) {
+                        router.push(mod.routeOverride as any);
+                      } else {
+                        router.push(`/settings/${mod.id}` as any);
+                      }
+                    }}
                     activeOpacity={0.8}
                   >
                     <GlassCard
-                      glowColor={mod.color as 'cyan' | 'pink' | 'purple'}
-                      className="flex-row items-center p-6 md:p-8 bg-white/[0.02] border-white/[0.05] hover:bg-white/[0.04] transition-all rounded-3xl"
+                      glowColor={mod.color as any}
+                      style={
+                        mod.customBg
+                          ? {
+                              backgroundColor: mod.customBg,
+                              borderColor: mod.customBorder,
+                              borderWidth: 1,
+                            }
+                          : {}
+                      }
+                      // Flex layout forces row, justify-between handles spacing
+                      className="flex-row items-center justify-between p-4 md:p-8 bg-white/[0.02] border-white/[0.05] hover:bg-white/[0.04] transition-all rounded-3xl"
                     >
-                      {/* Icon Container */}
-                      <View
-                        className={`w-12 h-12 rounded-full items-center justify-center mr-6 bg-${mod.color}-500/10 border border-${mod.color}-500/20`}
-                      >
-                        <mod.icon
-                          size={22}
-                          color={
-                            mod.color === 'cyan'
-                              ? '#22d3ee'
-                              : mod.color === 'pink'
-                                ? '#fb7185'
-                                : '#c084fc'
+                      {/* LEFT SIDE: Group Icon and Text together */}
+                      <View className="flex-row items-center flex-1 pr-2 shrink">
+                        {/* Icon Container - Responsive sizing */}
+                        <View
+                          style={
+                            mod.customBg
+                              ? {
+                                  backgroundColor: mod.iconHex + '15',
+                                  borderColor: mod.iconHex + '30',
+                                  borderWidth: 1,
+                                }
+                              : {}
                           }
-                        />
+                          className={cn(
+                            'w-10 h-10 md:w-12 md:h-12 rounded-full items-center justify-center mr-4',
+                            !mod.customBg &&
+                              `bg-${mod.color}-500/10 border border-${mod.color}-500/20`,
+                          )}
+                        >
+                          <mod.icon size={20} color={mod.iconHex} />
+                        </View>
+
+                        {/* Text Content - Shrink allows it to compress instead of pushing the chevron out */}
+                        <View className="flex-1 shrink">
+                          <Text
+                            className="mb-1 text-sm font-bold tracking-wider text-white uppercase md:tracking-widest md:text-xl"
+                            numberOfLines={2}
+                          >
+                            {mod.title}
+                          </Text>
+                          <Text
+                            className="text-[9px] md:text-xs text-white/40 font-medium uppercase tracking-widest md:tracking-[3px]"
+                            numberOfLines={2}
+                          >
+                            {mod.desc}
+                          </Text>
+                        </View>
                       </View>
 
-                      {/* Text Content */}
-                      <View className="flex-1">
-                        <Text className="mb-2 text-lg font-bold tracking-widest text-white uppercase md:text-xl">
-                          {mod.title}
-                        </Text>
-                        <Text className="text-[10px] md:text-xs text-white/40 font-medium uppercase tracking-[2px] md:tracking-[3px]">
-                          {mod.desc}
-                        </Text>
-                      </View>
-
-                      {/* Action Chevron */}
-                      <View className="ml-4 items-center justify-center w-10 h-10 rounded-full bg-white/[0.02] border border-white/5">
-                        <ChevronRight size={20} color="#ffffff50" />
+                      {/* RIGHT SIDE: Action Chevron - Shrink-0 ensures it never gets crushed */}
+                      <View className="items-center justify-center w-8 h-8 rounded-full md:w-10 md:h-10 bg-white/[0.02] border border-white/5 shrink-0">
+                        <ChevronRight size={18} color="#ffffff50" />
                       </View>
                     </GlassCard>
                   </TouchableOpacity>

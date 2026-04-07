@@ -5,14 +5,9 @@
     "version": "1.0.0",
     "scheme": "transcriber-pro",
     "orientation": "portrait",
-    "platforms": [
-      "ios",
-      "android",
-      "web"
-    ],
+    "platforms": ["ios", "android", "web"],
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.transcriberpro.app",
@@ -20,9 +15,7 @@
         "NSMicrophoneUsageDescription": "This app needs access to the microphone to transcribe your speech in real-time.",
         "NSPhotoLibraryUsageDescription": "This app needs access to your library to import video files for transcription.",
         "NSAppleMusicUsageDescription": "This app needs access to your audio files for transcription.",
-        "UIBackgroundModes": [
-          "audio"
-        ]
+        "UIBackgroundModes": ["audio"]
       }
     },
     "android": {
@@ -41,7 +34,11 @@
         "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
-        "android.permission.INTERNET"
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.ACCESS_WIFI_STATE",
+        "android.permission.VIBRATE",
+        "android.permission.WAKE_LOCK"
       ]
     },
     "web": {

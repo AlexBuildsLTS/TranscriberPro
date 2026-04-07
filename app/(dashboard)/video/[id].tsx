@@ -76,9 +76,6 @@ import type {
 // ══════════════════════════════════════════════════════════════════════════════
 // MODULE 1: AMBIENT BACKGROUND ENGINE (Breathing Animation)
 // ══════════════════════════════════════════════════════════════════════════════
-// ══════════════════════════════════════════════════════════════════════════════
-// 1. AMBIENT BACKGROUND ENGINE (100% Exact Match to Dashboard index.tsx)
-// ══════════════════════════════════════════════════════════════════════════════
 const AmbientGradient = ({ delay = 0, color = '#3B82F6' }) => {
   const pulse = useSharedValue(0);
   const { width, height } = Dimensions.get('window');

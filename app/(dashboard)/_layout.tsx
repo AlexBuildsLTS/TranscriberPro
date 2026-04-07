@@ -1,11 +1,11 @@
 import { Stack } from 'expo-router';
 import { AdaptiveLayout } from '../../components/layout/AdaptiveLayout';
 import { View } from 'react-native';
-import { ScrollView } from 'react-native-gesture-handler';
+
 
 export default function DashboardLayout() {
   return (
-    <View className="flex-1 bg-[#020205]">  
+    <View className="flex-1 bg-[#020205]">
       <AdaptiveLayout>
         <Stack
           screenOptions={{

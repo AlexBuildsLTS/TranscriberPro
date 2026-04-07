@@ -12,10 +12,8 @@ import { StatusBar } from 'expo-status-bar';
 import { useAuthStore } from '../store/useAuthStore';
 import { View, ActivityIndicator } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { supabase } from '../lib/supabase/client';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useColorScheme } from 'nativewind';
-import { Session } from '@supabase/supabase-js';
 import { ThemeProvider, DarkTheme } from '@react-navigation/native';
 
 const NeonDarkTheme = {
@@ -29,39 +27,39 @@ const NeonDarkTheme = {
   },
 };
 
-const queryClient = new QueryClient();
-
 export default function RootLayout() {
   const { setColorScheme } = useColorScheme();
-  const { initialize, isLoading } = useAuthStore();
+  
+  // 1. Pull session directly from the store instead of making a new listener
+  const { initialize, isLoading, session } = useAuthStore();
   const segments = useSegments();
   const router = useRouter();
+
+  // 2. Safely scope the QueryClient to the component lifecycle
+  const [queryClient] = useState(() => new QueryClient());
 
   useEffect(() => {
     setColorScheme('dark');
   }, [setColorScheme]);
 
   useEffect(() => {
-    initialize();
+    // 3. CORRECTLY capture and return the cleanup function to prevent memory leaks
+    const cleanup = initialize();
+    return cleanup;
   }, [initialize]);
 
+  // 4. Clean routing logic based purely on Zustand state
   useEffect(() => {
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(
-      (_event: string, newSession: Session | null) => {
-        const inAuthGroup = segments[0] === '(auth)';
+    if (isLoading) return;
 
-        if (newSession && inAuthGroup) {
-          router.replace('/(dashboard)');
-        } else if (!newSession && !inAuthGroup) {
-          router.replace('/(auth)/sign-in');
-        }
-      },
-    );
+    const inAuthGroup = segments[0] === '(auth)';
 
-    return () => subscription.unsubscribe();
-  }, [segments, router]);
+    if (session && inAuthGroup) {
+      router.replace('/(dashboard)');
+    } else if (!session && !inAuthGroup) {
+      router.replace('/(auth)/sign-in');
+    }
+  }, [session, isLoading, segments, router]);
 
   if (isLoading) {
     return (

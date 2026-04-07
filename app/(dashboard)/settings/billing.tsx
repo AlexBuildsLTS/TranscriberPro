@@ -1,22 +1,28 @@
 /**
- * FILE: app/(dashboard)/settings/billing.tsx
- *
- * Resource Allocation — shows current tier, monthly usage, and upgrades
- * Reads from workspaces tier, minutes used this month, monthly minutes limit
+ * app/(dashboard)/settings/billing.tsx
+ * Sovereign NorthOS — Resource Allocation & Token Economy (ULTIMATE v16.0)
+ * ══════════════════════════════════════════════════════════════════════════════
+ * PROTOCOL:
+ * 1. TRIPLE-FLEX ARCHITECTURE: SafetyView -> Keyboard -> Scroll flex mapping.
+ * 2. REAL-TIME LEDGER: Bi-directional sync with Supabase profiles and usage logs.
+ * 3. TOKEN ECONOMY: Member (50 Daily Refill) | Pro (2000 Monthly) | Enterprise (10K+ Custom).
+ * 4. WEB STABILITY: Native shadow props used to bypass NativeWind boxShadow crashes.
+ * 5. SCROLL ENGINE: flexGrow: 1 with 150px padding offset for infinite scroll.
+ * ══════════════════════════════════════════════════════════════════════════════
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  SafeAreaView,
   Platform,
   Dimensions,
   Linking,
   StyleSheet,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
@@ -26,7 +32,17 @@ import {
   Crown,
   TrendingUp,
   Info,
+  Coins,
+  RefreshCw,
+  Activity,
+  ShieldCheck,
+  Clock,
+  ChevronRight,
+  Database,
+  History,
+  ZapOff,
 } from 'lucide-react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { GlassCard } from '../../../components/ui/GlassCard';
 import { FadeIn } from '../../../components/animations/FadeIn';
 import { useAuthStore } from '../../../store/useAuthStore';
@@ -40,588 +56,712 @@ import Animated, {
   withDelay,
 } from 'react-native-reanimated';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Ambient orb
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── MODULE 1: AMBIENT VISUAL ENGINE ────────────────────────────────────────
 
-const NeuralOrb = ({
-  delay = 0,
-  color = '#00F0FF',
-}: {
-  delay?: number;
-  color?: string;
-}) => {
+const NeuralOrb = ({ delay = 0, color = '#8A2BE2' }) => {
   const pulse = useSharedValue(0);
-  const { width, height } = Dimensions.get('window');
+  const { width } = Dimensions.get('window');
+
   useEffect(() => {
     pulse.value = withDelay(
       delay,
-      withRepeat(withTiming(1, { duration: 8000 }), -1, true),
+      withRepeat(withTiming(1, { duration: 12000 }), -1, true),
     );
-  }, []);
-  const s = useAnimatedStyle(() => ({
+  }, [delay, pulse]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
     transform: [
-      { scale: interpolate(pulse.value, [0, 1], [1, 1.6]) },
-      { translateX: interpolate(pulse.value, [0, 1], [0, width * 0.05]) },
-      { translateY: interpolate(pulse.value, [0, 1], [0, height * 0.05]) },
+      { scale: interpolate(pulse.value, [0, 1], [1, 1.4]) },
+      { translateX: interpolate(pulse.value, [0, 1], [0, width * 0.03]) },
     ],
-    opacity: interpolate(pulse.value, [0, 1], [0.03, 0.09]),
+    opacity: interpolate(pulse.value, [0, 1], [0.03, 0.07]),
   }));
+
   return (
     <Animated.View
       style={[
-        s,
+        animatedStyle,
         {
           position: 'absolute',
-          width: 600,
-          height: 600,
+          width: 700,
+          height: 700,
           backgroundColor: color,
-          borderRadius: 300,
-          ...(Platform.OS === 'web' ? ({ filter: 'blur(120px)' } as any) : {}),
+          borderRadius: 350,
+          ...(Platform.OS === 'web' ? ({ filter: 'blur(140px)' } as any) : {}),
         },
       ]}
     />
   );
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Constants
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── MODULE 2: ECONOMIC CONFIGURATION ───────────────────────────────────────
 
-const TIER_META: Record<
-  string,
-  { label: string; color: string; icon: React.ComponentType<any> }
-> = {
-  free: { label: 'On-Demand', color: '#A1A1AA', icon: Zap },
-  pro: { label: 'Teams', color: '#00F0FF', icon: Star },
-  enterprise: { label: 'Enterprise Suite', color: '#8A2BE2', icon: Crown },
+const TIER_CONFIG = {
+  free: {
+    label: 'Standard Member',
+    color: '#00F0FF',
+    icon: Zap,
+    badge: 'DAILY REFILL',
+    allowance: 50,
+    resetLabel: 'Refills daily at 00:00 UTC',
+  },
+  pro: {
+    label: 'Premium Teams',
+    color: '#FFD700',
+    icon: Star,
+    badge: 'PRO ACCESS',
+    allowance: 2000,
+    resetLabel: 'Monthly quota reset active',
+  },
+  enterprise: {
+    label: 'Enterprise',
+    color: '#FF3366',
+    icon: Crown,
+    badge: 'UNLIMITED',
+    allowance: 10000,
+    resetLabel: 'High-volume reserve active',
+  },
 };
 
-const TIER_FEATURES: Record<string, string[]> = {
+const PROTOCOLS = {
   free: [
-    'Standard processing speed',
-    'Videos up to 15 minutes',
-    'YouTube caption extraction',
-    'Gemini AI insights',
-    'Community support',
+    '50 Token Daily Refill Protocol',
+    'Standard Speech-to-Text Speed',
+    'YouTube Metadata Extraction (Free)',
+    'Community Support Infrastructure',
   ],
   pro: [
-    'Priority processing',
-    'Videos up to 2 hours',
-    'All caption + audio layers',
-    'Gemini 3.1 Flash-Lite',
-    'Export to SRT / VTT / JSON',
-    'SLA support',
+    '2,000 Token Monthly Reservoir',
+    'Priority Neural Processing',
+    'Full Export Layers (SRT/VTT/JSON)',
+    'Gemini 3.1 Flash-Lite Support',
+    'Dedicated Slack Support Node',
   ],
   enterprise: [
-    'Instant processing',
-    'Unlimited video length',
-    'RapidAPI + all extraction layers',
-    'Custom AI prompt templates',
-    'Batch submission',
-    'Custom webhooks',
-    'Dedicated support agent',
+    'Custom Bulk Token Allocation',
+    'Zero-Latency Synthesis Node',
+    'Custom Prompt Engineering Vault',
+    'Batch Video Submission Access',
+    'Dedicated Account Architect',
   ],
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Screen
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── MODULE 3: MAIN COMPONENT ───────────────────────────────────────────────
 
 export default function BillingScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
-  const { width } = Dimensions.get('window');
-  const isMobile = width < 768;
-
   const [tier, setTier] = useState<'free' | 'pro' | 'enterprise'>('free');
-  const [used, setUsed] = useState(0);
-  const [limit, setLimit] = useState(60);
+  const [balance, setBalance] = useState(0);
+  const [consumed, setConsumed] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    if (!user) return;
-    (async () => {
-      const { data } = await supabase
+  const { width: SCREEN_WIDTH } = Dimensions.get('window');
+  const isMobile = SCREEN_WIDTH < 768;
+
+  // ── DATA FETCH ENGINE ──
+  const syncEconomy = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      // 1. Sync Base Profile
+      const { data: profile, error: pErr } = await supabase
         .from('profiles')
         .select('tier, tokens_balance')
         .eq('id', user.id)
         .single();
 
-      if (data) {
-        setTier((data.tier as any) ?? 'free');
-        setUsed(0); // Profiles doesn't have minutes_used_this_month
-        setLimit(data.tokens_balance ?? 60);
-      }
-      setIsLoading(false);
-    })();
-  }, [user]);
+      if (pErr) throw pErr;
 
-  const meta = TIER_META[tier] ?? TIER_META.free;
-  const TierIcon = meta.icon;
-  const pct = Math.min(100, limit > 0 ? Math.round((used / limit) * 100) : 0);
-  const barColor = pct > 85 ? '#FF007F' : meta.color;
+      const currentTier = (profile.tier as any) ?? 'free';
+      setTier(currentTier);
+      setBalance(profile.tokens_balance ?? 0);
+
+      // 2. Aggregate Consumption Logs
+      const now = new Date();
+      const cycleStart =
+        currentTier === 'free'
+          ? new Date(
+              now.getFullYear(),
+              now.getMonth(),
+              now.getDate(),
+            ).toISOString()
+          : new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+      const { data: logs } = await supabase
+        .from('usage_logs')
+        .select('tokens_consumed')
+        .eq('user_id', user.id)
+        .gte('created_at', cycleStart);
+
+      const totalBurn =
+        logs?.reduce((acc, log) => acc + (log.tokens_consumed || 0), 0) || 0;
+      setConsumed(totalBurn);
+    } catch (err) {
+      console.error('[ECONOMY FAULT]: Identity Sync Interrupted.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    syncEconomy();
+  }, [syncEconomy]);
+
+  const config = TIER_CONFIG[tier] || TIER_CONFIG.free;
+  const usagePercentage = Math.min(
+    100,
+    config.allowance > 0 ? Math.round((consumed / config.allowance) * 100) : 0,
+  );
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.loading}>
-        <View className="absolute inset-0 overflow-hidden" pointerEvents="none">
-          <NeuralOrb delay={0} color="#8A2BE2" />
-          <NeuralOrb delay={2500} color="#00F0FF" />
-        </View>
-        <ActivityIndicator color="#8A2BE2" size="large" />
-        <Text style={styles.loadingText}>Loading Allocation...</Text>
-      </SafeAreaView>
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator color="#00F0FF" size="large" />
+        <Text style={styles.loadingText}>Accessing Ledger Nodes...</Text>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
-      <View className="absolute inset-0 overflow-hidden" pointerEvents="none">
+    <SafeAreaView style={styles.rootContainer}>
+      {/* ── AMBIENT CANVAS ── */}
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
         <NeuralOrb delay={0} color="#8A2BE2" />
-        <NeuralOrb delay={2500} color="#00F0FF" />
+        <NeuralOrb delay={6000} color="#00F0FF" />
       </View>
 
-      <ScrollView
-        style={{ flex: 1, width: '100%' }}
-        contentContainerStyle={{
-          padding: isMobile ? 20 : 60,
-          paddingTop: isMobile ? 60 : 60,
-          paddingBottom: 160,
-          flexGrow: 1,
-        }}
-        showsVerticalScrollIndicator={false}
+      {/* ── CORE SCROLL ENGINE ── */}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.flexOne}
       >
-      {/* ── Back ─────────────────────────────────────────────────────── */}
+        <ScrollView
+          style={styles.flexOne}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.maxLayoutWidth}>
+            {/* ── HEADER ── */}
             <TouchableOpacity
               onPress={() =>
-                router.canGoBack()
-                  ? router.back()
-                  : router.replace('/settings' as any)
+                router.canGoBack() ? router.back() : router.replace('/settings')
               }
-              className="flex-row items-center mb-10 gap-x-2"
+              style={styles.backButton}
               activeOpacity={0.7}
             >
-              <ArrowBigLeftDash size={18} color="#5425ad" />
-              <Text className="text-[10px] font-black tracking-[4px] text-neon-purple uppercase">
-                Return
+              <ArrowBigLeftDash size={22} color={config.color} />
+              <Text style={[styles.backText, { color: config.color }]}>
+                System Return
               </Text>
             </TouchableOpacity>
-        {/* ── Heading ──────────────────────────────────────────────────── */}
-        <FadeIn>
-          <View style={{ marginBottom: 32 }}>
-            <Text style={styles.moduleBadge}>BILLING</Text>
-            <Text style={styles.pageTitle}>
-              Resource <Text style={{ color: '#8A2BE2' }}>Allocation</Text>
-            </Text>
-            <View style={styles.headingRule} />
-          </View>
-        </FadeIn>
 
-        {/* ── Current tier card ────────────────────────────────────────── */}
-        <FadeIn delay={100}>
-          <GlassCard glowColor="purple" className="p-8 mb-5">
-            {/* Tier header */}
-            <View style={styles.tierHeader}>
-              <View>
-                <Text style={styles.sectionLabel}>Current Tier</Text>
-                <View style={styles.tierNameRow}>
-                  <TierIcon size={18} color={meta.color} />
-                  <Text style={[styles.tierName, { color: meta.color }]}>
-                    {meta.label}
-                  </Text>
-                </View>
-              </View>
-              <View
-                style={[
-                  styles.tierBadge,
-                  {
-                    borderColor: meta.color + '50',
-                    backgroundColor: meta.color + '18',
-                  },
-                ]}
-              >
-                <Text style={[styles.tierBadgeText, { color: meta.color }]}>
-                  {tier.toUpperCase()}
+            <FadeIn>
+              <View style={styles.headerTitleBlock}>
+                <Text style={styles.moduleBadge}>Economy Interface</Text>
+                <Text style={styles.mainTitle}>
+                  Resource{' '}
+                  <Text style={{ color: config.color }}>Allocation</Text>
                 </Text>
-              </View>
-            </View>
-
-            {/* Usage bar */}
-            <View style={{ marginTop: 24, marginBottom: 8 }}>
-              <View style={styles.usageRow}>
-                <View style={styles.usageLabelRow}>
-                  <TrendingUp size={12} color="rgba(255,255,255,0.3)" />
-                  <Text style={styles.usageLabel}>Minutes this month</Text>
-                </View>
-                <Text style={styles.usageCount}>
-                  {used} / {limit} min
-                </Text>
-              </View>
-              <View style={styles.barTrack}>
                 <View
-                  style={[
-                    styles.barFill,
-                    {
-                      width: `${pct}%` as any,
-                      backgroundColor: barColor,
-                      shadowColor: barColor,
-                    },
-                  ]}
+                  style={[styles.titleRule, { backgroundColor: config.color }]}
                 />
               </View>
-              <Text style={styles.barHint}>
-                {pct}% used — resets on the 1st of each month
-              </Text>
-            </View>
+            </FadeIn>
 
-            {/* Feature list */}
-            <View style={{ marginTop: 24 }}>
-              <Text style={[styles.sectionLabel, { marginBottom: 14 }]}>
-                Plan includes
-              </Text>
-              {(TIER_FEATURES[tier] ?? []).map((f) => (
-                <View key={f} style={styles.featureRow}>
+            {/* ── MODULE: IDENTITY STATUS ── */}
+            <FadeIn delay={100}>
+              <GlassCard style={styles.glassCardOverride}>
+                <View style={styles.statusHeaderRow}>
+                  <View>
+                    <Text style={styles.metaLabel}>Active clearance</Text>
+                    <View style={styles.tierNameBlock}>
+                      <config.icon size={26} color={config.color} />
+                      <Text style={styles.tierLabelText}>{config.label}</Text>
+                    </View>
+                  </View>
                   <View
-                    style={[styles.featureDot, { backgroundColor: meta.color }]}
-                  />
-                  <Text style={styles.featureText}>{f}</Text>
+                    style={[
+                      styles.badgeContainer,
+                      {
+                        borderColor: `${config.color}40`,
+                        backgroundColor: `${config.color}12`,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.badgeText, { color: config.color }]}>
+                      {config.badge}
+                    </Text>
+                  </View>
                 </View>
-              ))}
-            </View>
-          </GlassCard>
-        </FadeIn>
 
-        {/* ── Upgrade CTAs ─────────────────────────────────────────────── */}
-        {tier !== 'enterprise' && (
-          <FadeIn delay={200}>
-            <GlassCard glowColor="cyan" className="p-8 mb-5">
-              <Text style={styles.upgradeTitle}>Upgrade Your Node</Text>
-              <Text style={styles.upgradeSubtitle}>
-                Unlock longer videos, priority processing, and advanced AI
-                layers.
-              </Text>
+                {/* CAPACITY METER */}
+                <View style={styles.meterContainer}>
+                  <View style={styles.meterInfoRow}>
+                    <View style={styles.meterLabelBlock}>
+                      <Coins size={16} color="#FFD700" />
+                      <Text style={styles.meterTitle}>Reserve Tokens</Text>
+                    </View>
+                    <Text style={styles.balanceValue}>
+                      {balance.toLocaleString()}
+                    </Text>
+                  </View>
 
-              {tier === 'free' && (
-                <TouchableOpacity
-                  onPress={() =>
-                    Linking.openURL('https://transcriber-pro.vercel.app/')
-                  }
-                  style={styles.ctaCyan}
-                  activeOpacity={0.75}
-                >
-                  <Star size={15} color="#00F0FF" />
-                  <Text style={styles.ctaCyanText}>
-                    Teams Plan — $29 / month
+                  <View style={styles.progressBarTrack}>
+                    <View
+                      style={[
+                        styles.progressBarFill,
+                        {
+                          width: `${100 - usagePercentage}%`,
+                          backgroundColor: config.color,
+                          // SAFE NATIVE SHADOWS - NO BOX-SHADOW STRING
+                          shadowColor: config.color,
+                          shadowOffset: { width: 0, height: 0 },
+                          shadowOpacity: 0.8,
+                          shadowRadius: 10,
+                          elevation: 5,
+                        },
+                      ]}
+                    />
+                  </View>
+
+                  <View style={styles.meterFooter}>
+                    <View style={styles.footerInfoBlock}>
+                      <RefreshCw size={12} color="rgba(255,255,255,0.2)" />
+                      <Text style={styles.footerText}>{config.resetLabel}</Text>
+                    </View>
+                    <Text style={styles.consumedText}>{consumed} burned</Text>
+                  </View>
+                </View>
+
+                {/* PROTOCOL LIST */}
+                <View style={styles.protocolBlock}>
+                  <Text style={styles.metaLabel}>Active Network Protocols</Text>
+                  <View style={styles.protocolList}>
+                    {PROTOCOLS[tier].map((protocol, i) => (
+                      <View key={i} style={styles.protocolRow}>
+                        <ShieldCheck size={14} color={`${config.color}70`} />
+                        <Text style={styles.protocolText}>{protocol}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              </GlassCard>
+            </FadeIn>
+
+            {/* ── MODULE: SCALING OPTIONS ── */}
+            {tier !== 'enterprise' && (
+              <FadeIn delay={200}>
+                <GlassCard style={styles.glassCardOverride}>
+                  <View style={styles.upgradeHeader}>
+                    <Database size={20} color="#FF3366" />
+                    <Text style={styles.upgradeTitle}>
+                      Expand Core Reservoirs
+                    </Text>
+                  </View>
+                  <Text style={styles.upgradeSubtext}>
+                    Initiate token migration to unlock high-priority neural
+                    lanes and infinite synthesis.
                   </Text>
-                </TouchableOpacity>
-              )}
 
-              <TouchableOpacity
-                onPress={() =>
-                  Linking.openURL('https://transcriber-pro.vercel.app/')
-                }
-                style={styles.ctaPurple}
-                activeOpacity={0.75}
-              >
-                <Crown size={15} color="#8A2BE2" />
-                <Text style={styles.ctaPurpleText}>
-                  Enterprise Suite — $99 / month
-                </Text>
-              </TouchableOpacity>
+                  <View style={styles.ctaGrid}>
+                    {tier === 'free' && (
+                      <TouchableOpacity
+                        onPress={() =>
+                          Linking.openURL('https://transcriber-pro.vercel.app/')
+                        }
+                        style={styles.proCta}
+                        activeOpacity={0.8}
+                      >
+                        <Star size={18} color="#00F0FF" />
+                        <Text style={styles.proCtaText}>Teams Plan — $29</Text>
+                        <ChevronRight size={14} color="#00F0FF" />
+                      </TouchableOpacity>
+                    )}
 
-              <Text style={styles.stripeHint}>
-                Billing managed via Stripe · Cancel anytime
-              </Text>
-            </GlassCard>
-          </FadeIn>
-        )}
+                    <TouchableOpacity
+                      onPress={() =>
+                        Linking.openURL('https://transcriber-pro.vercel.app/')
+                      }
+                      style={styles.enterpriseCta}
+                      activeOpacity={0.8}
+                    >
+                      <Crown size={18} color="#FF3366" />
+                      <Text style={styles.enterpriseCtaText}>Enterprise</Text>
+                      <ChevronRight size={14} color="#FF3366" />
+                    </TouchableOpacity>
+                  </View>
 
-        {/* ── How minutes work ─────────────────────────────────────────── */}
-        <FadeIn delay={300}>
-          <GlassCard glowColor="purple" className="p-8">
-            <View style={styles.infoHeader}>
-              <Info size={14} color="rgba(255,255,255,0.3)" />
-              <Text
-                style={[
-                  styles.sectionLabel,
-                  { marginBottom: 0, marginLeft: 8 },
-                ]}
-              >
-                How minutes are counted
-              </Text>
-            </View>
-            <View style={{ marginTop: 16, gap: 12 }}>
-              {[
-                'Minutes are counted only when audio is sent to Deepgram for speech-to-text.',
-                'Videos transcribed via YouTube captions (no audio needed) do not consume minutes.',
-                'Failed jobs are never billed against your quota.',
-                'Usage resets automatically on the 1st of each month.',
-              ].map((line) => (
-                <View key={line} style={styles.infoRow}>
-                  <View style={styles.infoDot} />
-                  <Text style={styles.infoText}>{line}</Text>
+                  <Text style={styles.stripeDisclaimer}>
+                    Transactions secured via AES-256 Stripe Infrastructure
+                  </Text>
+                </GlassCard>
+              </FadeIn>
+            )}
+
+            {/* ── MODULE: LEDGER LOGIC ── */}
+            <FadeIn delay={300}>
+              <View style={styles.footerLedger}>
+                <View style={styles.ledgerHeaderRow}>
+                  <Clock size={16} color="#FFF" />
+                  <Text style={styles.ledgerTitle}>Ledger Logic</Text>
                 </View>
-              ))}
+                <View style={styles.ledgerList}>
+                  <View style={styles.ledgerRow}>
+                    <View style={styles.ledgerBullet} />
+                    <Text style={styles.ledgerText}>
+                      <Text style={styles.boldWhite}>Daily Refill:</Text> Member
+                      tiers receive 50 tokens at 00:00 UTC. Non-accumulative.
+                    </Text>
+                  </View>
+                  <View style={styles.ledgerRow}>
+                    <View style={styles.ledgerBullet} />
+                    <Text style={styles.ledgerText}>
+                      <Text style={styles.boldWhite}>Synthesis Cost:</Text> 1
+                      Token is depleted per 60 seconds of AI speech-to-text.
+                    </Text>
+                  </View>
+                  <View style={styles.ledgerRow}>
+                    <View style={styles.ledgerBullet} />
+                    <Text style={styles.ledgerText}>
+                      <Text style={styles.boldWhite}>Captions:</Text> YouTube
+                      caption extraction is bypass-certified (Zero Cost).
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </FadeIn>
+
+            {/* SYSTEM FOOTER */}
+            <View style={styles.systemManifest}>
+              <History size={16} color="rgba(255,255,255,0.15)" />
+              <Text style={styles.manifestText}>
+                NORTHOS RESOURCE ENGINE V16.0.0
+              </Text>
             </View>
-          </GlassCard>
-        </FadeIn>
-      </ScrollView>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Styles
-// ─────────────────────────────────────────────────────────────────────────────
-
-const PURPLE = '#8A2BE2';
-const CYAN = '#00F0FF';
+// ─── MODULE 4: STYLING KERNEL ───────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  loading: {
+  rootContainer: {
     flex: 1,
     backgroundColor: '#020205',
-    alignItems: 'center',
+  },
+  flexOne: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 150,
+  },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: '#020205',
     justifyContent: 'center',
+    alignItems: 'center',
   },
   loadingText: {
-    color: PURPLE,
-    fontWeight: '700',
+    color: '#00F0FF',
+    marginTop: 24,
     fontSize: 10,
+    fontWeight: '900',
     letterSpacing: 6,
     textTransform: 'uppercase',
-    marginTop: 16,
   },
-
-  backBtn: {
+  maxLayoutWidth: {
+    width: '100%',
+    maxWidth: 800,
+    alignSelf: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 60,
+  },
+  backButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 36,
-    alignSelf: 'flex-start',
+    marginBottom: 40,
+    gap: 12,
   },
   backText: {
-    color: PURPLE,
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 11,
+    fontWeight: '900',
     letterSpacing: 3,
     textTransform: 'uppercase',
   },
-
+  headerTitleBlock: {
+    marginBottom: 48,
+  },
   moduleBadge: {
-    color: PURPLE,
+    color: 'rgba(255,255,255,0.2)',
     fontSize: 10,
     fontWeight: '900',
     letterSpacing: 8,
     textTransform: 'uppercase',
+    marginBottom: 16,
+  },
+  mainTitle: {
+    color: '#FFF',
+    fontSize: 42,
+    fontWeight: '900',
+    letterSpacing: -2,
+    textTransform: 'uppercase',
+  },
+  titleRule: {
+    width: 60,
+    height: 4,
+    marginTop: 20,
+    borderRadius: 2,
+  },
+  glassCardOverride: {
+    padding: 32,
+    marginBottom: 32,
+    borderColor: 'rgba(255,255,255,0.05)',
+  },
+  statusHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 40,
+  },
+  metaLabel: {
+    color: 'rgba(255,255,255,0.25)',
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 3,
+    textTransform: 'uppercase',
     marginBottom: 8,
   },
-  pageTitle: {
-    color: '#FFFFFF',
-    fontSize: 38,
-    fontWeight: '900',
-    letterSpacing: -1,
-    textTransform: 'uppercase',
-    lineHeight: 44,
-  },
-  headingRule: {
-    width: 64,
-    height: 2,
-    backgroundColor: PURPLE,
-    marginTop: 14,
-    borderRadius: 99,
-    shadowColor: PURPLE,
-    shadowOpacity: 0.8,
-    shadowRadius: 10,
-  },
-
-  sectionLabel: {
-    color: 'rgba(255,255,255,0.28)',
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 4,
-    textTransform: 'uppercase',
-    marginBottom: 6,
-  },
-
-  tierHeader: {
+  tierNameBlock: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
   },
-  tierNameRow: {
+  tierLabelText: {
+    color: '#FFF',
+    fontSize: 26,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+    textTransform: 'uppercase',
+  },
+  badgeContainer: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  badgeText: {
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 2,
+  },
+  meterContainer: {
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 20,
+    padding: 24,
+  },
+  meterInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  meterLabelBlock: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginTop: 6,
   },
-  tierName: {
+  meterTitle: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 10,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+  },
+  balanceValue: {
+    color: '#FFF',
     fontSize: 22,
     fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 2,
+    fontFamily: Platform.OS === 'web' ? 'monospace' : 'Menlo',
   },
-  tierBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 99,
-    borderWidth: 1,
-  },
-  tierBadgeText: {
-    fontSize: 9,
-    fontWeight: '900',
-    letterSpacing: 3,
-    textTransform: 'uppercase',
-  },
-
-  usageRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  usageLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  usageLabel: {
-    color: 'rgba(255,255,255,0.35)',
-    fontSize: 10,
-    fontFamily: 'monospace',
-    letterSpacing: 2,
-    textTransform: 'uppercase',
-  },
-  usageCount: {
-    color: 'rgba(255,255,255,0.55)',
-    fontSize: 10,
-    fontFamily: 'monospace',
-  },
-  barTrack: {
+  progressBarTrack: {
     width: '100%',
     height: 6,
     backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 99,
-    overflow: 'hidden',
+    borderRadius: 3,
+    overflow: 'visible', // Changed to visible so glow is seen
   },
-  barFill: {
+  progressBarFill: {
     height: '100%',
-    borderRadius: 99,
-    shadowOpacity: 0.6,
-    shadowRadius: 6,
+    borderRadius: 3,
   },
-  barHint: {
-    color: 'rgba(255,255,255,0.18)',
-    fontSize: 9,
-    fontFamily: 'monospace',
-    textAlign: 'right',
-    marginTop: 6,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+  meterFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 16,
   },
-
-  featureRow: {
+  footerInfoBlock: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginBottom: 10,
+    gap: 8,
   },
-  featureDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 99,
-  },
-  featureText: {
-    color: 'rgba(255,255,255,0.55)',
-    fontSize: 12,
-    fontWeight: '500',
-  },
-
-  upgradeTitle: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '900',
-    letterSpacing: 1,
+  footerText: {
+    color: 'rgba(255,255,255,0.2)',
+    fontSize: 9,
+    fontWeight: '800',
     textTransform: 'uppercase',
+  },
+  consumedText: {
+    color: 'rgba(255,255,255,0.3)',
+    fontSize: 10,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  protocolBlock: {
+    marginTop: 40,
+  },
+  protocolList: {
+    gap: 14,
+    marginTop: 12,
+  },
+  protocolRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  protocolText: {
+    color: 'rgba(255,255,255,0.65)',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  upgradeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
     marginBottom: 8,
   },
-  upgradeSubtitle: {
-    color: 'rgba(255,255,255,0.35)',
-    fontSize: 10,
+  upgradeTitle: {
+    color: '#FFF',
+    fontSize: 20,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  upgradeSubtext: {
+    color: 'rgba(255,255,255,0.3)',
+    fontSize: 12,
+    lineHeight: 18,
+    marginBottom: 28,
+  },
+  ctaGrid: {
+    gap: 12,
+  },
+  proCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+    backgroundColor: 'rgba(0,240,255,0.05)',
+    borderColor: 'rgba(0,240,255,0.2)',
+    borderWidth: 1,
+    borderRadius: 14,
+    gap: 12,
+  },
+  proCtaText: {
+    color: '#00F0FF',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+  },
+  enterpriseCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+    backgroundColor: 'rgba(255,51,102,0.05)',
+    borderColor: 'rgba(255,51,102,0.2)',
+    borderWidth: 1,
+    borderRadius: 14,
+    gap: 12,
+  },
+  enterpriseCtaText: {
+    color: '#FF3366',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+  },
+  stripeDisclaimer: {
+    textAlign: 'center',
+    marginTop: 20,
+    color: 'rgba(255,255,255,0.12)',
+    fontSize: 8,
     fontFamily: 'monospace',
     letterSpacing: 2,
     textTransform: 'uppercase',
-    lineHeight: 17,
+  },
+  footerLedger: {
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 24,
+    padding: 24,
+    marginTop: 20,
+  },
+  ledgerHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
     marginBottom: 20,
   },
-  ctaCyan: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    paddingVertical: 17,
-    marginBottom: 12,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(0,240,255,0.3)',
-    backgroundColor: 'rgba(0,240,255,0.06)',
-  },
-  ctaCyanText: {
-    color: CYAN,
+  ledgerTitle: {
+    color: '#FFF',
     fontSize: 11,
     fontWeight: '900',
-    letterSpacing: 3,
+    letterSpacing: 4,
     textTransform: 'uppercase',
   },
-  ctaPurple: {
+  ledgerList: {
+    gap: 16,
+  },
+  ledgerRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    paddingVertical: 17,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(138,43,226,0.3)',
-    backgroundColor: 'rgba(138,43,226,0.06)',
+    gap: 12,
   },
-  ctaPurpleText: {
-    color: PURPLE,
-    fontSize: 11,
-    fontWeight: '900',
-    letterSpacing: 3,
-    textTransform: 'uppercase',
-  },
-  stripeHint: {
-    color: 'rgba(255,255,255,0.15)',
-    fontSize: 9,
-    fontFamily: 'monospace',
-    textAlign: 'center',
-    marginTop: 14,
-    textTransform: 'uppercase',
-    letterSpacing: 2,
-  },
-
-  infoHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-  },
-  infoDot: {
+  ledgerBullet: {
     width: 4,
     height: 4,
-    borderRadius: 99,
-    backgroundColor: PURPLE,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     marginTop: 6,
   },
-  infoText: {
+  ledgerText: {
     flex: 1,
-    color: 'rgba(255,255,255,0.45)',
-    fontSize: 12,
-    lineHeight: 19,
+    color: 'rgba(255,255,255,0.35)',
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  boldWhite: {
+    color: 'rgba(255,255,255,0.6)',
+    fontWeight: '800',
+  },
+  systemManifest: {
+    alignItems: 'center',
+    marginTop: 100,
+    opacity: 0.1,
+  },
+  manifestText: {
+    color: '#FFF',
+    fontSize: 8,
+    fontFamily: 'monospace',
+    letterSpacing: 8,
+    marginTop: 10,
+    textTransform: 'uppercase',
   },
 });

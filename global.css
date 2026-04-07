@@ -38,7 +38,7 @@ body,
     /* Prevent OS light-mode from triggering NativeWind's light-mode CSS reset */
     color-scheme: dark !important;
   }
-  
+
   * {
     color-scheme: dark !important;
   }
@@ -50,7 +50,7 @@ body,
   */
   .neural-glass {
     @apply bg-[#0A0A0F]/95 border border-white/10 rounded-[32px] overflow-hidden;
-    box-shadow: 0 0 40px rgba(0, 240, 255, 0.05);
+    @apply shadow-lg shadow-cyan-500/10;
   }
 
   /* THE ORB ENGINE:
@@ -101,7 +101,7 @@ body,
     background-color: #020205 !important;
     color: #ffffff !important;
   }
-  
+
   body {
     background-color: #020205 !important;
     color: #ffffff !important;

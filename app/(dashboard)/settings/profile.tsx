@@ -1,8 +1,6 @@
 /**
  * FILE: app/(dashboard)/settings/profile.tsx
- * - expo-image-picker → Supabase Storage (avatars bucket)
-
- * - Animated avatar ring on upload
+ * MODULE: User Profile Management (NorthOS)
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -16,17 +14,15 @@ import {
   Platform,
   Dimensions,
   Image,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   ArrowBigLeftDash,
-  Camera,
   User,
   Mail,
-  Upload,
-  Check,
   Sparkles,
   Shield,
   Fingerprint,
@@ -52,17 +48,44 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 
-// ── Ambient orb ───────────────────────────────────────────────────────────────
+// 1. THIS IS THE BADGE COLOR HELPER
+const getRoleConfig = (role?: string) => {
+  switch (role?.toLowerCase()) {
+    case 'admin':
+      return {
+        label: 'ADMIN',
+        bg: 'rgba(255, 51, 102, 0.15)',
+        text: '#FF3366',
+        border: 'rgba(255, 51, 102, 0.3)',
+      };
+    case 'premium':
+      return {
+        label: 'PREMIUM',
+        bg: 'rgba(255, 170, 0, 0.15)',
+        text: '#FFD700',
+        border: 'rgba(255, 170, 0, 0.3)',
+      };
+    default:
+      return {
+        label: 'MEMBER',
+        bg: 'rgba(0, 240, 255, 0.15)',
+        text: '#00F0FF',
+        border: 'rgba(0, 240, 255, 0.3)',
+      };
+  }
+};
 
 const NeuralOrb = ({ delay = 0, color = '#00F0FF' }) => {
   const pulse = useSharedValue(0);
   const { width, height } = Dimensions.get('window');
+
   useEffect(() => {
     pulse.value = withDelay(
       delay,
       withRepeat(withTiming(1, { duration: 8000 }), -1, true),
     );
   }, [delay, pulse]);
+
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
       { scale: interpolate(pulse.value, [0, 1], [1, 1.6]) },
@@ -71,6 +94,7 @@ const NeuralOrb = ({ delay = 0, color = '#00F0FF' }) => {
     ],
     opacity: interpolate(pulse.value, [0, 1], [0.03, 0.09]),
   }));
+
   return (
     <Animated.View
       style={[
@@ -88,8 +112,6 @@ const NeuralOrb = ({ delay = 0, color = '#00F0FF' }) => {
   );
 };
 
-// ── Stat pill ─────────────────────────────────────────────────────────────────
-
 const StatPill = ({
   icon: Icon,
   label,
@@ -102,15 +124,15 @@ const StatPill = ({
   color?: string;
 }) => (
   <View
-    className="items-center flex-1 p-4 border rounded-2xl border-white/5 gap-y-1"
-    style={{ backgroundColor: 'rgba(255,255,255,0.02)' }}
+    className="items-center flex-1 p-4 border rounded-2xl border-white/10"
+    style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}
   >
     <Icon size={16} color={color} />
-    <Text className="text-[8px] font-black uppercase tracking-widest text-white/30 mt-1">
+    <Text className="text-[8px] font-black uppercase tracking-[2px] text-white/30 mt-2">
       {label}
     </Text>
     <Text
-      className="text-[10px] font-bold text-white/70 text-center"
+      className="text-[10px] font-bold text-white/80 mt-1"
       numberOfLines={1}
     >
       {value}
@@ -118,13 +140,11 @@ const StatPill = ({
   </View>
 );
 
-// ── Main screen ───────────────────────────────────────────────────────────────
-
 export default function ProfileSettingsScreen() {
   const router = useRouter();
-  const { user } = useAuthStore();
-  const { width } = Dimensions.get('window');
-  const isMobile = width < 768;
+
+  // 2. WE PULL THE PROFILE HERE TO CHECK THE ROLE
+  const { user, profile } = useAuthStore();
 
   const [fullName, setFullName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
@@ -134,547 +154,374 @@ export default function ProfileSettingsScreen() {
   const [saved, setSaved] = useState(false);
   const [memberSince, setMemberSince] = useState('');
 
-  // Avatar ring animation
+  // 3. WE SET UP THE BADGE DATA FOR THE UI
+  const userRole = profile?.role || 'member';
+  const roleConfig = getRoleConfig(userRole);
+
   const ringScale = useSharedValue(1);
   const ringOpacity = useSharedValue(0.3);
 
   const pulseRing = useCallback(() => {
-    ringScale.value = withSequence(
-      withSpring(1.15, { damping: 8 }),
-      withSpring(1, { damping: 12 }),
-    );
+    ringScale.value = withSequence(withSpring(1.15), withSpring(1));
     ringOpacity.value = withSequence(
       withTiming(1, { duration: 200 }),
       withTiming(0.3, { duration: 600 }),
     );
-  }, [ringScale, ringOpacity]);
+  }, []);
 
   const ringStyle = useAnimatedStyle(() => ({
     transform: [{ scale: ringScale.value }],
     opacity: ringOpacity.value,
   }));
 
-  // ── Load profile ─────────────────────────────────────────────────────────
-
   useEffect(() => {
     async function loadProfile() {
       if (!user) return;
-      const { data } = await supabase
-        .from('profiles')
-        .select('full_name, avatar_url')
-        .eq('id', user.id)
-        .single();
-      if (data) {
-        setFullName(data.full_name ?? '');
-        setAvatarUrl(data.avatar_url ?? '');
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('full_name, avatar_url')
+          .eq('id', user.id)
+          .single();
+        if (error) throw error;
+        if (data) {
+          setFullName(data.full_name ?? '');
+          setAvatarUrl(data.avatar_url ?? '');
+        }
+        if (user.created_at) {
+          setMemberSince(
+            new Date(user.created_at).toLocaleDateString('en-US', {
+              month: 'short',
+              year: 'numeric',
+            }),
+          );
+        }
+      } catch (err) {
+        console.error('Profile sync error:', err);
+      } finally {
+        setIsLoading(false);
       }
-      if (user.created_at) {
-        setMemberSince(
-          new Date(user.created_at).toLocaleDateString('en-US', {
-            month: 'short',
-            year: 'numeric',
-          }),
-        );
-      }
-      setIsLoading(false);
     }
     loadProfile();
   }, [user]);
 
-  // ── Image picker + upload ────────────────────────────────────────────────
-
   const handlePickImage = useCallback(async () => {
-    // Request permissions
     if (Platform.OS !== 'web') {
       const { status } =
         await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert(
-          'Permission Required',
-          'Allow photo library access to upload an avatar.',
-        );
+        Alert.alert('Permission Error', 'Gallery access is required.');
         return;
       }
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
-      aspect: [1, 1],
       quality: 0.8,
     });
 
     if (result.canceled || !result.assets?.length) return;
+    performAvatarSync(result.assets[0]);
+  }, [user]);
 
-    const asset = result.assets[0];
-    if (!asset?.uri) return;
-
+  const performAvatarSync = async (asset: ImagePicker.ImagePickerAsset) => {
     setIsUploading(true);
     pulseRing();
-
     try {
-      // Convert to blob
       const response = await fetch(asset.uri);
       const blob = await response.blob();
       const ext = asset.uri.split('.').pop()?.toLowerCase() ?? 'jpg';
       const fileName = `${user!.id}/avatar_${Date.now()}.${ext}`;
 
-      // Upload to Supabase Storage (avatars bucket — public)
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(fileName, blob, {
-          contentType: asset.mimeType ?? `image/${ext}`,
-          upsert: true,
-        });
+        .upload(fileName, blob, { contentType: `image/${ext}`, upsert: true });
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
       const { data: urlData } = supabase.storage
         .from('avatars')
         .getPublicUrl(fileName);
+      setAvatarUrl(urlData.publicUrl);
 
-      const publicUrl = urlData.publicUrl;
-      setAvatarUrl(publicUrl);
-
-      // Save immediately
       await supabase
         .from('profiles')
         .update({
-          avatar_url: publicUrl,
+          avatar_url: urlData.publicUrl,
           updated_at: new Date().toISOString(),
         })
         .eq('id', user!.id);
-      await supabase.auth.updateUser({ data: { avatar_url: publicUrl } });
-
+      await supabase.auth.updateUser({
+        data: { avatar_url: urlData.publicUrl },
+      });
       pulseRing();
     } catch (err: any) {
-      Alert.alert('Upload Failed', err.message ?? 'Could not upload image.');
-    } finally {
-      setIsUploading(false);
-    }
-  }, [user, pulseRing]);
-
-  // ── Camera capture ───────────────────────────────────────────────────────
-
-  const handleTakePhoto = useCallback(async () => {
-    if (Platform.OS === 'web') {
-      Alert.alert('Not supported', 'Camera capture is not available on web.');
-      return;
-    }
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') {
       Alert.alert(
-        'Permission Required',
-        'Allow camera access to take a photo.',
+        'Upload Interrupted',
+        err.message || 'Storage node unreachable.',
       );
-      return;
-    }
-
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-
-    if (result.canceled || !result.assets?.length) return;
-
-    const asset = result.assets[0];
-    if (!asset?.uri) return;
-
-    setIsUploading(true);
-    pulseRing();
-
-    try {
-      const response = await fetch(asset.uri);
-      const blob = await response.blob();
-      const fileName = `${user!.id}/avatar_${Date.now()}.jpg`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(fileName, blob, { contentType: 'image/jpeg', upsert: true });
-
-      if (uploadError) throw uploadError;
-
-      const { data: urlData } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(fileName);
-
-      const publicUrl = urlData.publicUrl;
-      setAvatarUrl(publicUrl);
-
-      await supabase
-        .from('profiles')
-        .update({
-          avatar_url: publicUrl,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', user!.id);
-      await supabase.auth.updateUser({ data: { avatar_url: publicUrl } });
-
-      pulseRing();
-    } catch (err: any) {
-      Alert.alert('Upload Failed', err.message ?? 'Could not upload photo.');
     } finally {
       setIsUploading(false);
     }
-  }, [user, pulseRing]);
-
-  // ── Remove avatar ────────────────────────────────────────────────────────
-
-  const handleRemoveAvatar = useCallback(async () => {
-    setAvatarUrl('');
-    await supabase
-      .from('profiles')
-      .update({
-        avatar_url: null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', user!.id);
-    await supabase.auth.updateUser({ data: { avatar_url: null } });
-  }, [user]);
-
-  // ── Save name ────────────────────────────────────────────────────────────
+  };
 
   const handleSaveProfile = useCallback(async () => {
-    if (!user) return;
-    if (!fullName.trim()) {
-      Alert.alert('Validation', 'Name cannot be empty.');
+    if (!user || !fullName.trim()) {
+      Alert.alert('Input Required', 'Operative designation cannot be blank.');
       return;
     }
     setIsSaving(true);
-    setSaved(false);
-
-    const { error } = await supabase
-      .from('profiles')
-      .update({
-        full_name: fullName.trim(),
-        avatar_url: avatarUrl || null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', user.id);
-
-    if (error) {
-      Alert.alert('Sync Failed', error.message);
-    } else {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: fullName.trim(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
+      if (error) throw error;
       await supabase.auth.updateUser({ data: { full_name: fullName.trim() } });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
+    } catch (err: any) {
+      Alert.alert('Cloud Sync Error', err.message);
+    } finally {
+      setIsSaving(false);
     }
-    setIsSaving(false);
-  }, [user, fullName, avatarUrl]);
+  }, [user, fullName]);
 
-  // ── Loading state ─────────────────────────────────────────────────────────
+  // 4. SAFE RETURN HANDLER - Fallback to /settings
+  const handleReturn = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/settings'); // Directly to the settings index
+    }
+  };
 
   if (isLoading) {
     return (
-      <SafeAreaView className="flex-1 bg-[#020205] items-center justify-center">
-        <View className="absolute inset-0 overflow-hidden" pointerEvents="none">
-          <NeuralOrb delay={0} color="#00F0FF" />
-          <NeuralOrb delay={2500} color="#8A2BE2" />
-        </View>
+      <View className="flex-1 bg-[#020205] items-center justify-center">
         <ActivityIndicator color="#00F0FF" size="large" />
-        <Text className="text-neon-cyan font-bold text-[10px] tracking-[6px] uppercase mt-4">
-          Loading Profile...
-        </Text>
-      </SafeAreaView>
+      </View>
     );
   }
 
-  const initials = fullName
-    ? fullName
-        .split(' ')
-        .map((n) => n[0])
-        .join('')
-        .substring(0, 2)
-        .toUpperCase()
-    : (user?.email?.charAt(0).toUpperCase() ?? 'U');
-
   return (
     <SafeAreaView className="flex-1 bg-[#020205]">
-      {/* Ambient background */}
       <View className="absolute inset-0 overflow-hidden" pointerEvents="none">
         <NeuralOrb delay={0} color="#00F0FF" />
-        <NeuralOrb delay={2500} color="#FF007F" />
+        <NeuralOrb delay={4000} color="#FF007F" />
       </View>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{
-          padding: isMobile ? 20 : 60,
-          paddingTop: isMobile ? 60 : 60,
-          paddingBottom: 160,
-        }}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        className="flex-1"
       >
-        {/* ── Back ─────────────────────────────────────────────────────── */}
-        <TouchableOpacity
-          onPress={() =>
-            router.canGoBack()
-              ? router.back()
-              : router.replace('/settings' as any)
-          }
-          className="flex-row items-center mb-10 gap-x-2"
-          activeOpacity={0.7}
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 150 }}
         >
-          <ArrowBigLeftDash size={18} color="#00F0FF" />
-          <Text className="text-[10px] font-black tracking-[4px] text-neon-cyan uppercase">
-            Return
-          </Text>
-        </TouchableOpacity>
+          <View className="w-full max-w-2xl px-6 pt-12 mx-auto">
+            {/* THIS IS THE WEB-VISIBLE BACK ARROW */}
+            <TouchableOpacity
+              onPress={handleReturn}
+              className="flex-row items-center mb-12 gap-x-3"
+              activeOpacity={0.7}
+            >
+              <ArrowBigLeftDash size={24} color="#00F0FF" />
+              <Text className="text-[11px] font-black tracking-[4px] text-neon-cyan uppercase">
+                RETURN
+              </Text>
+            </TouchableOpacity>
 
-        {/* ── Header ─────────────────────────────────────────────────────── */}
-        <FadeIn>
-          <View className="mb-10">
-            <Text className="text-neon-cyan font-black text-[10px] tracking-[8px] uppercase mb-2"></Text>
-            <Text className="text-4xl md:text-5xl font-black text-white tracking-tighter uppercase leading-[45px]">
-              EDIT <Text className="text-neon-cyan">PROFILE</Text>
-            </Text>
-            <View className="h-[2px] w-16 bg-neon-cyan mt-4 rounded-full shadow-[0_0_20px_#00F0FF]" />
-          </View>
-        </FadeIn>
+            <FadeIn>
+              {/* 5. THIS IS WHERE THE BADGE RENDERS ON THE SCREEN */}
+              <View className="flex-row items-center justify-between mb-12">
+                <View>
+                  <Text className="text-5xl font-black leading-none tracking-tighter text-white uppercase md:text-6xl">
+                    <Text className="text-neon-cyan">PROFILE</Text>
+                  </Text>
+                  <View className="h-1 w-24 bg-neon-cyan mt-6 rounded-full shadow-[0_0_15px_#00F0FF]" />
+                </View>
 
-        {/* ── Avatar card ────────────────────────────────────────────────── */}
-        <FadeIn delay={100}>
-          <GlassCard glowColor="cyan" className="p-8 mb-6">
-            <Text className="text-white/30 text-[10px] font-bold uppercase tracking-[4px] mb-6">
-              Avatar
-            </Text>
-
-            {/* Avatar circle with animated ring */}
-            <View className="items-center mb-6">
-              <View className="relative">
-                {/* Glow ring */}
-                <Animated.View
-                  style={[
-                    ringStyle,
-                    {
-                      position: 'absolute',
-                      top: -6,
-                      left: -6,
-                      right: -6,
-                      bottom: -6,
-                      borderRadius: 999,
-                      borderWidth: 2,
-                      borderColor: '#00F0FF',
-                    },
-                  ]}
-                />
-
-                {/* Avatar circle */}
+                {/* DYNAMIC ROLE BADGE */}
                 <View
                   style={{
-                    width: 100,
-                    height: 100,
-                    borderRadius: 50,
-                    backgroundColor: 'rgba(0,0,0,0.6)',
-                    borderWidth: 2,
-                    borderColor: 'rgba(0,240,255,0.3)',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    overflow: 'hidden',
+                    backgroundColor: roleConfig.bg,
+                    borderColor: roleConfig.border,
+                    borderWidth: 1,
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: 8,
                   }}
                 >
-                  {isUploading ? (
-                    <ActivityIndicator color="#00F0FF" />
-                  ) : avatarUrl ? (
-                    <Image
-                      source={{ uri: avatarUrl }}
-                      style={{ width: 100, height: 100 }}
-                      resizeMode="cover"
-                    />
-                  ) : (
-                    <Text className="text-3xl font-black text-neon-cyan">
-                      {initials}
+                  <Text
+                    style={{
+                      color: roleConfig.text,
+                      fontSize: 10,
+                      fontWeight: '900',
+                      letterSpacing: 2,
+                    }}
+                  >
+                    {roleConfig.label}
+                  </Text>
+                </View>
+              </View>
+            </FadeIn>
+
+            <FadeIn delay={100}>
+              <GlassCard className="items-center p-10 mb-8 border-white/5">
+                <View className="relative mb-8">
+                  <Animated.View
+                    style={[
+                      ringStyle,
+                      {
+                        position: 'absolute',
+                        inset: -8,
+                        borderRadius: 999,
+                        borderWidth: 2,
+                        borderColor: '#00F0FF',
+                      },
+                    ]}
+                  />
+
+                  <View
+                    className="items-center justify-center overflow-hidden border-2 rounded-full bg-black/80 border-neon-cyan/40"
+                    style={{ width: 144, height: 144 }}
+                  >
+                    {isUploading ? (
+                      <ActivityIndicator color="#00F0FF" />
+                    ) : avatarUrl ? (
+                      <Image
+                        source={{ uri: avatarUrl }}
+                        style={{ width: '100%', height: '100%' }}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <User size={56} color="#00F0FF" />
+                    )}
+                  </View>
+
+                  <TouchableOpacity
+                    onPress={handlePickImage}
+                    className="absolute bottom-1 right-1 w-11 h-11 rounded-full bg-neon-cyan items-center justify-center border-4 border-[#020205] shadow-lg shadow-neon-cyan/50"
+                  >
+                    <Pencil size={18} color="#020205" />
+                  </TouchableOpacity>
+                </View>
+
+                <View className="flex-row w-full gap-x-4">
+                  <TouchableOpacity
+                    onPress={handlePickImage}
+                    disabled={isUploading}
+                    className="items-center flex-1 py-4 border bg-white/5 border-white/10 rounded-2xl"
+                  >
+                    <Text className="text-white/60 text-[10px] font-black uppercase tracking-[3px]">
+                      {isUploading ? 'Transferring...' : 'AVATAR'}
                     </Text>
+                  </TouchableOpacity>
+
+                  {avatarUrl && (
+                    <TouchableOpacity
+                      onPress={() => setAvatarUrl('')}
+                      className="items-center justify-center w-16 border bg-neon-pink/10 border-neon-pink/20 rounded-2xl"
+                    >
+                      <RotateCcw size={20} color="#FF007F" />
+                    </TouchableOpacity>
                   )}
                 </View>
+              </GlassCard>
+            </FadeIn>
 
-                {/* Camera badge */}
-                <TouchableOpacity
-                  onPress={handlePickImage}
-                  disabled={isUploading}
-                  style={{
-                    position: 'absolute',
-                    bottom: 0,
-                    right: 0,
-                    width: 30,
-                    height: 30,
-                    borderRadius: 15,
-                    backgroundColor: '#00F0FF',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderWidth: 2,
-                    borderColor: '#020205',
-                  }}
-                >
-                  <Pencil size={12} color="#020205" />
-                </TouchableOpacity>
+            <FadeIn delay={200}>
+              <GlassCard className="p-8 mb-8 border-white/5">
+                <View className="gap-y-10">
+                  <View>
+                    <View className="flex-row items-center mb-4 ml-1">
+                      <User size={14} color="#00F0FF" />
+                      <Text className="text-neon-cyan font-black text-[10px] tracking-[4px] uppercase ml-3">
+                        USERNAME
+                      </Text>
+                    </View>
+                    <View className="h-16 px-2 py-1 border justify-left bg-black/60 border-white/15 rounded-2xl">
+                      <Input
+                        value={fullName}
+                        onChangeText={setFullName}
+                        placeholder="User Name"
+                        className="text-lg font-bold text-white bg-transparent border-1"
+                        placeholderTextColor="rgba(255,255,255,0.15)"
+                      />
+                    </View>
+                  </View>
+
+                  <View>
+                    <View className="flex-row items-center mb-4 ml-1">
+                      <Mail size={14} color="rgba(255,255,255,0.3)" />
+                      <Text className="text-white/30 font-black text-[10px] tracking-[4px] uppercase ml-3">
+                        System Email
+                      </Text>
+                    </View>
+                    <View className="flex-row items-center justify-between h-16 px-6 border shadow-inner opacity-50 bg-white/5 border-white/5 rounded-2xl">
+                      <Text className="font-mono text-sm tracking-tight text-white/40">
+                        {user?.email}
+                      </Text>
+                      <Shield size={14} color="rgba(255,255,255,0.1)" />
+                    </View>
+                  </View>
+                </View>
+
+                <Button
+                  title={
+                    isSaving
+                      ? 'SYNCING...'
+                      : saved
+                        ? 'IDENTITY UPDATED'
+                        : 'SAVE CHANGES'
+                  }
+                  onPress={handleSaveProfile}
+                  variant={saved ? 'secondary' : 'primary'}
+                  className="py-5 mt-12 shadow-2xl"
+                  isLoading={isSaving}
+                />
+              </GlassCard>
+            </FadeIn>
+
+            <FadeIn delay={300}>
+              <View className="flex-row gap-x-4">
+                <StatPill
+                  icon={Fingerprint}
+                  label="Provider"
+                  value={
+                    user?.app_metadata?.provider?.toUpperCase() || 'EXTERNAL'
+                  }
+                  color="#8A2BE2"
+                />
+                <StatPill
+                  icon={Globe}
+                  label="Network"
+                  value="Production-V1"
+                  color="#00F0FF"
+                />
+                <StatPill
+                  icon={Sparkles}
+                  label="Access Date"
+                  value={memberSince}
+                  color="#FF007F"
+                />
               </View>
+            </FadeIn>
 
-              <Text className="text-white/30 text-[10px] font-mono uppercase tracking-widest mt-4">
-                Avatar Display Node
+            <View className="items-center mt-20 opacity-30">
+              <View className="h-[1px] w-12 bg-white/20 mb-4" />
+              <Text className="text-[9px] font-mono tracking-[6px] text-white uppercase">
+                NorthOS Digital Identity Module
               </Text>
-              {user?.email && (
-                <Text className="text-white/20 text-[9px] font-mono mt-1">
-                  {user.email}
-                </Text>
-              )}
             </View>
-
-            {/* Upload action buttons */}
-            <View className="flex-row gap-x-3">
-              <TouchableOpacity
-                onPress={handlePickImage}
-                disabled={isUploading}
-                className="flex-row items-center justify-center flex-1 py-3 border gap-x-2 rounded-2xl border-neon-cyan/30 bg-neon-cyan/5"
-                activeOpacity={0.7}
-              >
-                <Upload size={14} color="#00F0FF" />
-                <Text className="text-neon-cyan text-[10px] font-black uppercase tracking-widest">
-                  {isUploading ? 'Uploading...' : 'Upload'}
-                </Text>
-              </TouchableOpacity>
-
-              {Platform.OS !== 'web' && (
-                <TouchableOpacity
-                  onPress={handleTakePhoto}
-                  disabled={isUploading}
-                  className="flex-row items-center justify-center flex-1 py-3 border gap-x-2 rounded-2xl border-white/10"
-                  style={{ backgroundColor: 'rgba(255,255,255,0.02)' }}
-                  activeOpacity={0.7}
-                >
-                  <Camera size={14} color="#A1A1AA" />
-                  <Text className="text-white/50 text-[10px] font-black uppercase tracking-widest">
-                    Camera
-                  </Text>
-                </TouchableOpacity>
-              )}
-
-              {avatarUrl ? (
-                <TouchableOpacity
-                  onPress={handleRemoveAvatar}
-                  disabled={isUploading}
-                  className="items-center justify-center px-4 py-3 border rounded-2xl border-neon-pink/20 bg-neon-pink/5"
-                  activeOpacity={0.7}
-                >
-                  <RotateCcw size={14} color="#FF007F" />
-                </TouchableOpacity>
-              ) : null}
-            </View>
-
-            <Text className="text-white/20 text-[8px] font-mono uppercase tracking-widest text-center mt-3">
-              JPG, PNG or WEBP · Max 5MB · Auto-cropped square
-            </Text>
-          </GlassCard>
-        </FadeIn>
-
-        {/* ── Identity card ───────────────────────────────────────────────── */}
-        <FadeIn delay={200}>
-          <GlassCard glowColor="cyan" className="p-8 mb-6">
-            <Text className="text-white/30 text-[10px] font-bold uppercase tracking-[4px] mb-6">
-              Identity
-            </Text>
-
-            <View className="gap-y-4">
-              {/* Name field with icon */}
-              <View>
-                <Text className="text-neon-cyan font-black text-[10px] tracking-widest uppercase mb-2 ml-1">
-                  Operative Name
-                </Text>
-                <View
-                  className="flex-row items-center px-4 border border-white/10 rounded-2xl h-14"
-                  style={{ backgroundColor: 'rgba(255,255,255,0.02)' }}
-                >
-                  <User size={16} color="#A1A1AA" />
-                  <View className="flex-1 ml-3">
-                    <Input
-                      placeholder="Enter full designation"
-                      value={fullName}
-                      onChangeText={setFullName}
-                      autoCapitalize="words"
-                      className="p-0 mb-0 bg-transparent border-0"
-                    />
-                  </View>
-                </View>
-              </View>
-
-              {/* Email (read only) */}
-              <View>
-                <Text className="text-white/30 font-black text-[10px] tracking-widest uppercase mb-2 ml-1">
-                  Registered Email
-                </Text>
-                <View
-                  className="flex-row items-center px-4 border border-white/5 rounded-2xl h-14"
-                  style={{ backgroundColor: 'rgba(255,255,255,0.01)' }}
-                >
-                  <Mail size={16} color="#52525B" />
-                  <Text className="flex-1 ml-3 text-sm font-medium text-white/30">
-                    {user?.email ?? '—'}
-                  </Text>
-                  <View className="px-2 py-1 border rounded-full bg-white/5 border-white/10">
-                    <Text className="text-[8px] font-black uppercase tracking-widest text-white/20">
-                      Locked
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-
-            {/* Save button */}
-            <Button
-              title={
-                isSaving ? 'SYNCING...' : saved ? 'SAVED ✓' : 'UPDATE IDENTITY'
-              }
-              onPress={handleSaveProfile}
-              isLoading={isSaving}
-              variant="primary"
-              className={`py-5 mt-6 shadow-lg ${saved ? 'shadow-neon-lime/20' : 'shadow-neon-cyan/20'}`}
-            >
-              {!isSaving && saved && <Check size={16} color="#32FF00" />}
-            </Button>
-          </GlassCard>
-        </FadeIn>
-
-        {/* ── Account stats ───────────────────────────────────────────────── */}
-        <FadeIn delay={300}>
-          <GlassCard glowColor="purple" className="p-8 mb-6">
-            <Text className="text-white/30 text-[10px] font-bold uppercase tracking-[4px] mb-4">
-              USER STATE
-            </Text>
-            <View className="flex-row gap-x-3">
-              <StatPill
-                icon={Shield}
-                label="Auth"
-                value="Active"
-                color="#00F0FF"
-              />
-              <StatPill
-                icon={Fingerprint}
-                label="Provider"
-                value={user?.app_metadata?.provider ?? 'email'}
-                color="#8A2BE2"
-              />
-              <StatPill
-                icon={Globe}
-                label="Since"
-                value={memberSince || '—'}
-                color="#A1A1AA"
-              />
-            </View>
-          </GlassCard>
-        </FadeIn>
-
-        {/* ── Tips ────────────────────────────────────────────────────────── */}
-        <FadeIn delay={400}>
-          <View className="flex-row items-start px-2 gap-x-3">
-            <Sparkles size={14} color="#8A2BE2" style={{ marginTop: 2 }} />
-            <Text className="text-white/20 text-[10px] font-mono leading-5 flex-1">
-              NorthOS
-            </Text>
           </View>
-        </FadeIn>
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

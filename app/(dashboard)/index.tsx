@@ -6,6 +6,7 @@
  * 1. NATIVE SVG: Bypasses Metro bundler crashes using react-native-svg.
  * 2. TANSTACK MUTATION: Securely dispatches payloads via useProcessVideo hook.
  * 3. REALTIME DB SYNC: Listens to the `videos` table for live pipeline updates.
+ * 4. AMBIENT ORBS: Perfect circle geometry to prevent edge-clipping glitches, with slow drift.
  */
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -143,42 +144,59 @@ const AnimatedConverter = () => {
   );
 };
 
-// ─── AMBIENT BACKGROUND ──────────────────────────────────────────────────────
-const AmbientGradient = ({ delay = 0, color = '#3B82F6' }) => {
+// ══════════════════════════════════════════════════════════════════════════════
+// MODULE 1: AMBIENT BACKGROUND ENGINE (Restored 3-Color Glow & Fixed Edges)
+// ══════════════════════════════════════════════════════════════════════════════
+const AmbientGradient = ({ delay = 0, color = '#3B82F6', size, top, left, right, bottom }: any) => {
   const pulse = useSharedValue(0);
   const { width, height } = Dimensions.get('window');
 
   useEffect(() => {
     pulse.value = withDelay(
       delay,
-      withRepeat(withTiming(1, { duration: 10000 }), -1, true),
+      withRepeat(withTiming(1, { duration: 9000 }), -1, true),
     );
   }, [delay, pulse]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
       { scale: interpolate(pulse.value, [0, 1], [1, 1.4]) },
-      { translateX: interpolate(pulse.value, [0, 1], [0, width * 0.05]) },
-      { translateY: interpolate(pulse.value, [0, 1], [0, height * 0.05]) },
+      { translateX: interpolate(pulse.value, [0, 1], [0.5, width * 0.08]) },
+      { translateY: interpolate(pulse.value, [0, 1], [0, height * 0.06]) },
     ],
-    opacity: interpolate(pulse.value, [0, 1], [0.04, 0.08]),
+    opacity: interpolate(pulse.value, [0, 1], [0.03, 0.08]),
   }));
 
   return (
     <Animated.View
       style={[
         animatedStyle,
+
         {
           position: 'absolute',
-          width: width * 1.5,
-          height: width * 1.5,
+
+          width: width * 1,
+
+          height: width * 1,
+
           backgroundColor: color,
+
           borderRadius: width,
         },
       ]}
     />
   );
 };
+
+const AmbientEngine = React.memo(() => (
+  <>
+    <AmbientGradient delay={100} color="#3B82F6" top={-150} left={-100} />
+    <AmbientGradient delay={6000} color="#8B5CF6" top={-100} right={-150} />
+    <AmbientGradient delay={10000} color="#2003fc" bottom={-150} left={-140} />
+  </>
+));
+
+   
 
 interface PipelineStatus {
   text: string;
@@ -208,19 +226,48 @@ export default function DashboardScreen() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const OUTPUT_LANGUAGES = [
-    'English', 'Spanish', 'French', 'German', 'Italian', 'Portuguese',
-    'Dutch', 'Swedish', 'Russian', 'Japanese', 'Korean', 'Chinese',
+    'English',
+    'Spanish',
+    'French',
+    'German',
+    'Italian',
+    'Portuguese',
+    'Dutch',
+    'Swedish',
+    'Russian',
+    'Japanese',
+    'Korean',
+    'Chinese',
+    'Arabic',
+    'Hindi',
+    'Bengali',
+    'Turkish',
+    'Vietnamese',
+    'Polish',
+    'Thai',
+    'Indonesian',
+    'Hebrew',
+    'Greek',
+    'Czech',
+    'Danish',
+    'Finnish',
+    'Norwegian',
+    'Hungarian',
   ];
 
-  // ─── UPGRADED STATE & MUTATIONS ───
   // We use store ONLY for the active ID to track progress
-  const { activeVideoId: currentVideoId, clearState: clearError } = useVideoStore();
-  
+  const { activeVideoId: currentVideoId, clearState: clearError } =
+    useVideoStore();
+
   // Real-time data for the progress bar
   const { data: videoData } = useVideoData(currentVideoId);
-  
+
   // The actual Engine Trigger
-  const { mutateAsync: processVideo, isPending, error: mutationError } = useProcessVideo();
+  const {
+    mutateAsync: processVideo,
+    isPending,
+    error: mutationError,
+  } = useProcessVideo();
 
   const addLog = useCallback(
     (message: string, level: SystemLog['level'] = 'info') => {
@@ -242,19 +289,17 @@ export default function DashboardScreen() {
     },
     [],
   );
-  // ─── PIPELINE STATUS MONITORING 
-  
-  
+
+  // ─── PIPELINE STATUS MONITORING
   useEffect(() => {
     if (videoData?.status) {
-        const statusFormats: Record<string, string> = {
-          queued: 'Media queued for processing.',
-          downloading: 'Fetching media assets from source.',
-          transcribing: 'Transcribing audio track.',
-          ai_processing: 'Generating AI summaries and insights.',
-          completed: 'Processing complete. Results ready.',
-         failed: 'Processing pipeline encountered a critical error.',
-        
+      const statusFormats: Record<string, string> = {
+        queued: 'Media queued for processing.',
+        downloading: 'Fetching media assets from source.',
+        transcribing: 'Transcribing audio track.',
+        ai_processing: 'Generating AI summaries and insights.',
+        completed: 'Processing complete. Results ready.',
+        failed: 'Processing pipeline encountered a critical error.',
       };
 
       const level =
@@ -292,14 +337,16 @@ export default function DashboardScreen() {
     addLog('Validating source and initiating pipeline...', 'info');
 
     try {
-      // Dispatching via TanStack Mutation
       await processVideo({
         videoUrl: videoUrl,
         language: selectedLanguage,
       });
       addLog('Pipeline successfully initiated.', 'success');
     } catch (err: unknown) {
-      addLog(`Initialization failed: ${err instanceof Error ? err.message : String(err)}`, 'error');
+      addLog(
+        `Initialization failed: ${err instanceof Error ? err.message : String(err)}`,
+        'error',
+      );
     }
   };
 
@@ -373,14 +420,17 @@ export default function DashboardScreen() {
       videoData.status !== 'failed'),
   );
 
-  const displayError = (mutationError as Error)?.message || videoData?.error_message;
+  const displayError =
+    (mutationError as Error)?.message || videoData?.error_message;
 
   return (
     <SafeAreaView className="flex-1 bg-[#01111fbe]">
+      {/* ── AMBIENT ORB DEPLOYMENT ── */}
       <View
         className="absolute inset-0 overflow-hidden"
         style={{ pointerEvents: 'none' }}
       >
+        <AmbientEngine />
         <AmbientGradient delay={0.5} color="#3B82F6" />
         <AmbientGradient delay={3000} color="#8B5CF6" />
       </View>
@@ -682,8 +732,7 @@ export default function DashboardScreen() {
       </KeyboardAvoidingView>
       <View className="absolute items-center justify-center w-full bottom-4">
         <Text className="text-[10px] text-white/80 font-mono">
-          &copy; {new Date().getFullYear()} Transcriber Pro. All rights
-          reserved.
+          &copy; {new Date().getFullYear()} TranscriberPro All rights reserved
         </Text>
       </View>
     </SafeAreaView>

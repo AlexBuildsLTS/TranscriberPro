@@ -1,12 +1,16 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   darkMode: 'class',
+
+  // PROTCOL: Only scan source logic. Prevents interop from choking on node_modules.
   content: [
     './app/**/*.{js,jsx,ts,tsx}',
     './components/**/*.{js,jsx,ts,tsx}',
     './lib/**/*.{js,jsx,ts,tsx}',
   ],
+
   presets: [require('nativewind/preset')],
+
   theme: {
     extend: {
       colors: {
@@ -113,16 +117,6 @@ module.exports = {
         '4xl': '100px',
         '5xl': '150px',
       },
-      zIndex: {
-        behind: '-1',
-        base: '0',
-        raised: '10',
-        overlay: '20',
-        drawer: '30',
-        modal: '40',
-        toast: '50',
-        tooltip: '60',
-      },
       opacity: {
         2: '0.02',
         3: '0.03',
@@ -143,7 +137,6 @@ module.exports = {
         'neural-drift': 'neural-drift 18s ease-in-out infinite alternate',
         'orb-float': 'orb-float 12s ease-in-out infinite',
         shimmer: 'shimmer 2.5s linear infinite',
-        'border-spin': 'border-spin 4s linear infinite',
         'fade-in': 'fade-in 0.4s ease-out forwards',
         'fade-up': 'fade-up 0.5s ease-out forwards',
         'slide-in-right': 'slide-in-right 0.35s ease-out forwards',
@@ -168,23 +161,6 @@ module.exports = {
             textShadow: '0 0 24px #FF007F, 0 0 48px #FF007F',
           },
         },
-        'glow-purple': {
-          '0%, 100%': { opacity: '0.5', textShadow: '0 0 10px #8A2BE2' },
-          '50%': {
-            opacity: '1',
-            textShadow: '0 0 28px #8A2BE2, 0 0 56px #8A2BE2',
-          },
-        },
-        'neural-flow': {
-          '0%': { transform: 'translateX(-100%) translateY(-100%)' },
-          '100%': { transform: 'translateX(100%) translateY(100%)' },
-        },
-        'neural-drift': {
-          '0%': { transform: 'translate(-5%, -5%) scale(1)' },
-          '33%': { transform: 'translate(5%, -8%) scale(1.1)' },
-          '66%': { transform: 'translate(-3%, 6%) scale(0.95)' },
-          '100%': { transform: 'translate(7%, 3%) scale(1.05)' },
-        },
         'orb-float': {
           '0%, 100%': {
             transform: 'translateY(0px) scale(1)',
@@ -200,10 +176,6 @@ module.exports = {
           '0%': { backgroundPosition: '-200% center' },
           '100%': { backgroundPosition: '200% center' },
         },
-        'border-spin': {
-          '0%': { transform: 'rotate(0deg)' },
-          '100%': { transform: 'rotate(360deg)' },
-        },
         'fade-in': {
           '0%': { opacity: '0' },
           '100%': { opacity: '1' },
@@ -212,24 +184,13 @@ module.exports = {
           '0%': { opacity: '0', transform: 'translateY(16px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
-        'slide-in-right': {
-          '0%': { opacity: '0', transform: 'translateX(24px)' },
-          '100%': { opacity: '1', transform: 'translateX(0)' },
-        },
-        'scale-in': {
-          '0%': { opacity: '0', transform: 'scale(0.88)' },
-          '100%': { opacity: '1', transform: 'scale(1)' },
-        },
-      },
-      backgroundImage: {
-        'glass-gradient':
-          'linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%)',
-        'neon-border-gradient':
-          'linear-gradient(90deg, #00F0FF, #8A2BE2, #FF007F, #00F0FF)',
-        'surface-mixed':
-          'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(0, 0, 0, 0) 100%)',
       },
     },
   },
   plugins: [],
+
+  // ─── THE WEAPON: DISABLE BROKEN ASPECT RATIO PARSER ───
+  corePlugins: {
+    aspectRatio: false,
+  },
 };
