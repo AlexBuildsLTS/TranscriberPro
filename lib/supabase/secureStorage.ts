@@ -1,27 +1,47 @@
-//lib/supabase/secureStorage.ts
+import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 
+/**
+ * ============================================================================
+ * 🔐 MODULE: SECURE STORAGE ADAPTER (CROSS-PLATFORM)
+ * ============================================================================
+ * Handles token persistence. Uses SecureStore on Native (Encrypted)
+ * and localStorage on Web.
+ * ============================================================================
+ */
+
+const isWeb = Platform.OS === 'web';
+// Check if running in a browser environment or SSR
+const isBrowser = typeof window !== 'undefined';
+
 export const ExpoSecureStoreAdapter = {
-  getItem: async (key: string) => {
-    try {
+  getItem: async (key: string): Promise<string | null> => {
+    if (isWeb) {
+      if (!isBrowser) return null; // Prevent SSR crash
+      return localStorage.getItem(key);
+    } else {
+      // Native: Uses Expo SecureStore
       return await SecureStore.getItemAsync(key);
-    } catch (error) {
-      console.error('SecureStore get item error: ', error);
-      return null;
     }
   },
-  setItem: async (key: string, value: string) => {
-    try {
+
+  setItem: async (key: string, value: string): Promise<void> => {
+    if (isWeb) {
+      if (!isBrowser) return;
+      localStorage.setItem(key, value);
+    } else {
       await SecureStore.setItemAsync(key, value);
-    } catch (error) {
-      console.error('SecureStore set item error: ', error);
     }
   },
-  removeItem: async (key: string) => {
-    try {
+
+  removeItem: async (key: string): Promise<void> => {
+    if (isWeb) {
+      if (!isBrowser) return;
+      localStorage.removeItem(key);
+    } else {
       await SecureStore.deleteItemAsync(key);
-    } catch (error) {
-      console.error('SecureStore remove item error: ', error);
     }
   },
 };
+
+export default ExpoSecureStoreAdapter;

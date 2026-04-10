@@ -4,7 +4,7 @@
  * Root routing topology, global provider wrapper, and Premium Splash Handoff.
  * Uses expo-image to render a transparent SVG/GIF over the dark theme.
  */
-import 'react-native-url-polyfill/auto';
+import '../lib/polyfill';
 import 'react-native-gesture-handler';
 import '../global.css';
 
@@ -18,6 +18,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { Image } from 'expo-image';
 import { useAuthStore } from '../store/useAuthStore';
 import { ThemeProvider, DarkTheme } from '@react-navigation/native';
+
 
 // 1. Freeze the static image immediately so it doesn't flash
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -58,7 +59,7 @@ export default function RootLayout() {
     return cleanup;
   }, [initialize]);
 
-  // 3. Routing Logic & Splash Handoff Trigger
+  // 3. SINGLE SOURCE OF TRUTH ROUTING LOGIC
   useEffect(() => {
     if (isLoading) return;
 
@@ -96,8 +97,6 @@ export default function RootLayout() {
   }, [isLoading]);
 
   // Prevent rendering the actual UI tree until Auth is resolved
-  // ON WEB: We don't show the custom splash overlay, so we just wait for auth
-  // ON NATIVE: We show the custom splash overlay while auth is loading AND until the animation finishes
   if (isLoading && Platform.OS === 'web') {
     return <View style={{ flex: 1, backgroundColor: '#020205' }} />;
   }

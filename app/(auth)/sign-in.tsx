@@ -746,7 +746,7 @@ const AuthForm = memo(
             {isSignUp && (
               <Animated.View entering={SlideIn.delay(100)} exiting={SlideOut}>
                 <Text className="text-[#00F0FF] font-black text-[10px] tracking-widest uppercase mb-2 ml-1 mt-2">
-                  Confirm Security Key
+                  Confirm PASSWORD
                 </Text>
                 <View
                   className={cn(

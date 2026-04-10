@@ -1,25 +1,17 @@
-
 /**
- * AuthLayout handles the routing logic for unauthenticated users.
- * If a session is detected, it automatically redirects to the dashboard.
+ * app/(auth)/_layout.tsx
+ * Handles the visual presentation of unauthenticated routes.
+ * CRITICAL FIX: Removed duplicate navigation logic to prevent Router race conditions.
+ * Navigation is now strictly handled by the root app/_layout.tsx.
  */
 
 import { Stack } from 'expo-router';
 import React from 'react';
 import { View } from 'react-native';
 import { useAuthStore } from '../../store/useAuthStore';
-import { useEffect } from 'react';
-import { useRouter } from 'expo-router';
 
 const AuthLayout = () => {
-  const { session, isLoading } = useAuthStore();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!isLoading && session) {
-      router.replace('/(dashboard)');
-    }
-  }, [session, isLoading, router]);
+  const { isLoading } = useAuthStore();
 
   if (isLoading) {
     return (

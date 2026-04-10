@@ -2,8 +2,8 @@
   "name": "transcriber-pro",
   "version": "1.0.0",
   "description": "Videos Transcriber with AI Summaries, chapters.  ",
-  "type": "module",
   "main": "expo-router/entry",
+  "type": "module",
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
@@ -38,6 +38,7 @@
     "expo-haptics": "~55.0.13",
     "expo-image": "~55.0.8",
     "expo-image-picker": "~55.0.17",
+    "expo-insights": "~55.0.16",
     "expo-linear-gradient": "~55.0.12",
     "expo-linking": "~55.0.9",
     "expo-local-authentication": "~55.0.12",
