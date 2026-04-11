@@ -1,12 +1,12 @@
 /**
  * components/domain/TranscriptViewer.tsx
- * NorthOS Interactive Intelligence Viewer
+ * VerAI Interactive Intelligence Viewer
  * ----------------------------------------------------------------------------
  * FEATURES:
- * 1. SIDE-BY-SIDE ARCHITECTURE: Timeline and Raw Text are displayed simultaneously.
- * 2. VERTICAL LINE CHART: Connects chapter nodes with a continuous tracking line to the absolute bottom.
- * 3. MASSIVE DATA HANDLING: Optimized Text rendering with strict overflow protection.
- * 4. STRICT TYPES: Accepts exact undefined/string types to satisfy Supabase schema.
+ * SIDE-BY-SIDE Timeline and Raw Text are displayed simultaneously
+ * VERTICAL LINE CHART FOR THE AI EDGE
+ * MASSIVE DATA HANDLING: Optimized Text rendering with strict overflow protection
+ * STRICT TYPES: Accepts exact undefined/string types to satisfy Supabase schema
  */
 
 import React from 'react';

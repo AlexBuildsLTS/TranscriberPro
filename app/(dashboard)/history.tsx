@@ -3,10 +3,9 @@
  * VerAI Archive & Vault Dashboard
  * ----------------------------------------------------------------------------
  * MODULE OVERVIEW:
- * 1. AMBIENT ORB ENGINE: Fast, drifting, bouncing background visualizer.
- * 2. NATIVE SVG ANIMATION: Central floating Vault icon with spinning dial.
- * 3. HEADER & METRICS: Clean layout, centered badge, NO refresh bug on inputs.
- * 4. LIST & LAYOUT: Unified padding to prevent mobile stretching, perfect touch tracking.
+ * AMBIENT ORB ENGINE: Fast, drifting, bouncing background visualizer.
+ * NATIVE SVG ANIMATION: Central floating Vault icon with spinning dial.
+ * UI Unified padding to prevent mobile stretching, perfect touch tracking.
  */
 
 import React, { useCallback, useMemo, useState, useEffect } from 'react';
@@ -614,7 +613,7 @@ export default function HistoryPage() {
 
   // ─── THE FIX: headerElement ───
   // By creating this as a direct variable instead of an inline function,
-  // React Native reconciles it safely. The search bar stays in the right 
+  // React Native reconciles it safely. The search bar stays in the right
   // visual order but WILL NOT lose focus or refresh when you type.
   const headerElement = (
     <View
@@ -622,7 +621,7 @@ export default function HistoryPage() {
         width: '100%',
         alignItems: 'center',
         paddingTop: Platform.OS === 'ios' ? 60 : 40,
-        paddingBottom: 0, 
+        paddingBottom: 0,
       }}
     >
       {/* 1. Floating Vault SVG */}
@@ -631,7 +630,10 @@ export default function HistoryPage() {
       </Animated.View>
 
       {/* 2. Processed Count Badge */}
-      <Animated.View entering={FadeInDown.duration(400).delay(100)} style={{ marginTop: 24 }}>
+      <Animated.View
+        entering={FadeInDown.duration(400).delay(100)}
+        style={{ marginTop: 24 }}
+      >
         <View
           style={{
             backgroundColor: GREEN + '10',
@@ -670,7 +672,7 @@ export default function HistoryPage() {
           width: 80,
           backgroundColor: CYAN,
           marginTop: 30,
-          marginBottom: 30, 
+          marginBottom: 30,
           borderRadius: 999,
           shadowColor: CYAN,
           shadowOpacity: 0.8,
@@ -723,7 +725,11 @@ export default function HistoryPage() {
         entering={FadeInDown.duration(400).delay(400)}
         style={{ width: '100%', marginBottom: 10 }}
       >
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 20 }}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingRight: 20 }}
+        >
           {(
             [
               { key: 'all', label: 'All' },
@@ -747,12 +753,35 @@ export default function HistoryPage() {
   return (
     <View style={{ flex: 1, backgroundColor: DARK_NAVY }}>
       {/* Background Ambient Engine */}
-      <AmbientOrb color={CYAN} size={220} top={-20} left={-40} opacity={0.06} delay={0} />
-      <AmbientOrb color={PURPLE} size={180} top={280} right={-30} opacity={0.08} delay={1000} />
-      <AmbientOrb color={GREEN} size={150} bottom={100} left={40} opacity={0.03} delay={2000} />
+      <AmbientOrb
+        color={CYAN}
+        size={220}
+        top={-20}
+        left={-40}
+        opacity={0.06}
+        delay={0}
+      />
+      <AmbientOrb
+        color={PURPLE}
+        size={180}
+        top={280}
+        right={-30}
+        opacity={0.08}
+        delay={1000}
+      />
+      <AmbientOrb
+        color={GREEN}
+        size={150}
+        bottom={100}
+        left={40}
+        opacity={0.03}
+        delay={2000}
+      />
 
       {isLoading ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <View
+          style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+        >
           <ActivityIndicator color={CYAN} />
         </View>
       ) : (
@@ -760,7 +789,7 @@ export default function HistoryPage() {
           data={filtered}
           keyExtractor={(item) => item.id}
           // The fix: pass headerElement directly without an inline arrow function
-          ListHeaderComponent={headerElement} 
+          ListHeaderComponent={headerElement}
           ListEmptyComponent={
             <EmptyState filtered={filter !== 'all' || !!search.trim()} />
           }
@@ -778,7 +807,7 @@ export default function HistoryPage() {
             width: '100%',
             maxWidth: 672,
             alignSelf: 'center',
-            paddingHorizontal: 16, 
+            paddingHorizontal: 16,
           }}
           showsVerticalScrollIndicator={false}
           refreshControl={

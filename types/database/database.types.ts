@@ -165,6 +165,36 @@ export type Database = {
         }
         Relationships: []
       }
+      system_api_keys: {
+        Row: {
+          created_at: string | null
+          encrypted_key: string
+          id: string
+          key_preview: string
+          name: string
+          status: string | null
+          tokens_burned: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          encrypted_key: string
+          id?: string
+          key_preview: string
+          name: string
+          status?: string | null
+          tokens_burned?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          encrypted_key?: string
+          id?: string
+          key_preview?: string
+          name?: string
+          status?: string | null
+          tokens_burned?: number | null
+        }
+        Relationships: []
+      }
       transcripts: {
         Row: {
           confidence_score: number | null

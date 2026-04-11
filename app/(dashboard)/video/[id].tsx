@@ -1,13 +1,11 @@
 /**
  * app/(dashboard)/video/[id].tsx
- * Master Intelligence Dossier - NorthOS Monolithic Layout
+ * Master Intelligence Dossier - VerAI Monolithic Layout
  * ══════════════════════════════════════════════════════════════════════════════
- * ARCHITECTURE & USER DIRECTIVES (ENDGAME VERSION):
- * 1. AMBIENT ENGINE: Liquid Neon Orbs; 100% APK Touch-Safe (`pointerEvents: 'none'`).
- * 2. RESPONSIVE MATRIX: Export buttons scroll horizontally on mobile to prevent squishing.
- * 3. PROPORTIONAL TIMELINE: Z-Index boosted on expand to prevent overlapping.
- * 4. MOBILE TIMELINE: Natural flex-column stacking so expanding pushes content down.
- * 5. COMPACT TRANSCRIPT: Auto-formatted paragraphs in a restricted ScrollView.
+ * ARCHITECTURE
+ * 1. RESPONSIVE MATRIX: Export buttons scroll horizontally on mobile to prevent squishing.
+ * 2. MOBILE TIMELINE: Natural flex-column stacking so expanding pushes content down.
+ * 3. COMPACT TRANSCRIPT: Auto-formatted paragraphs in a restricted ScrollView.
  * ══════════════════════════════════════════════════════════════════════════════
  */
 

@@ -1,16 +1,15 @@
 /**
  * app/(dashboard)/settings/security.tsx
- * Verbum NorthOS — Enterprise Security & Identity Vault
+ * VerAI — Security & Identity Vault
  * ══════════════════════════════════════════════════════════════════════════════
  * PROTOCOL:
  * 1. BIOMETRIC KERNEL: Real hardware verification via expo-local-authentication.
  * 2. CREDENTIAL ROTATION: Current-Password + New-Password + Confirmation.
- * 3. AI API VAULT: Encrypted management for OpenAI, Gemini, and Anthropic nodes.
- * 4. LAYOUT PARITY: Matches profile.tsx aesthetic and Triple-Flex scrolling.
+ * 3. AI API VAULT (STILL NOT FINISHED): Encrypted management for OpenAI, Gemini, and Anthropic
  * ══════════════════════════════════════════════════════════════════════════════
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -22,6 +21,7 @@ import {
   Dimensions,
   KeyboardAvoidingView,
   StyleSheet,
+  TextInput,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as LocalAuthentication from 'expo-local-authentication';
@@ -29,26 +29,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   ArrowBigLeftDash,
   Lock,
-  ShieldCheck,
   Fingerprint,
-  Eye,
-  EyeOff,
-  AlertTriangle,
-  Trash2,
-  KeyRound,
   Cpu,
-  RefreshCw,
-  Database,
-  Sparkles,
   ShieldAlert,
 } from 'lucide-react-native';
 
 import { GlassCard } from '../../../components/ui/GlassCard';
-import { Input } from '../../../components/ui/Input';
-import { Button } from '../../../components/ui/Button';
 import { FadeIn } from '../../../components/animations/FadeIn';
 import { useAuthStore } from '../../../store/useAuthStore';
 import { supabase } from '../../../lib/supabase/client';
+import { cn } from '../../../lib/utils';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -58,9 +48,18 @@ import Animated, {
   withDelay,
 } from 'react-native-reanimated';
 
-// ─── MODULE 1: AMBIENT VISUAL ENGINE (Matches Profile.tsx) ──────────────────
+// ─── STRICT THEME ENFORCEMENT ───
+const THEME = {
+  obsidian: '#000012',
+  danger: '#FF007F', // Neon Pink
+  success: '#32FF00', // Neon Green
+  cyan: '#00F0FF', // Neon Cyan
+  purple: '#8A2BE2', // Neon Purple
+  slate: '#94a3b8',
+};
 
-const NeuralOrb = ({ delay = 0, color = '#FF007F' }) => {
+// ─── MODULE 1: AMBIENT VISUAL ENGINE (APK TOUCH-SAFE) ───────────────────────
+const NeuralOrb = ({ delay = 0, color = THEME.danger }: any) => {
   const pulse = useSharedValue(0);
   const { width, height } = Dimensions.get('window');
 
@@ -73,33 +72,32 @@ const NeuralOrb = ({ delay = 0, color = '#FF007F' }) => {
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
-      { scale: interpolate(pulse.value, [0, 1], [1, 1.6]) },
-      { translateX: interpolate(pulse.value, [0, 1], [0, width * 0.05]) },
+      { scale: interpolate(pulse.value, [0, 1], [1, 1.4]) },
+      { translateX: interpolate(pulse.value, [0, 1], [0, width * 0.1]) },
       { translateY: interpolate(pulse.value, [0, 1], [0, height * 0.05]) },
     ],
-    opacity: interpolate(pulse.value, [0, 1], [0.03, 0.09]),
+    opacity: interpolate(pulse.value, [0, 1], [0.03, 0.08]),
   }));
 
   return (
     <Animated.View
-      pointerEvents="none"
       style={[
-        animatedStyle,
         {
           position: 'absolute',
-          width: 600,
-          height: 600,
+          width: 500,
+          height: 500,
           backgroundColor: color,
-          borderRadius: 300,
+          borderRadius: 250,
+          pointerEvents: 'none', // CRITICAL FIX: Ensures it never blocks touches
           ...(Platform.OS === 'web' ? ({ filter: 'blur(120px)' } as any) : {}),
         },
+        animatedStyle,
       ]}
     />
   );
 };
 
-// ─── MODULE 2: PASSWORD STRENGTH HELPERS ──────────────────────────────────
-
+// ─── MODULE 2: PASSWORD STRENGTH HELPERS ────────────────────────────────────
 const calculateEntropy = (pw: string) => {
   const checks = [
     pw.length >= 10,
@@ -110,15 +108,20 @@ const calculateEntropy = (pw: string) => {
   return checks.filter(Boolean).length;
 };
 
-const ENTROPY_COLORS = ['#3F3F46', '#EF4444', '#F59E0B', '#00F0FF', '#10B981'];
+const ENTROPY_COLORS = [
+  '#3F3F46',
+  THEME.danger,
+  '#F59E0B',
+  THEME.cyan,
+  THEME.success,
+];
 
 // ─── MODULE 3: MAIN COMPONENT ───────────────────────────────────────────────
-
 export default function SecuritySettingsScreen() {
   const router = useRouter();
-  const { user, profile: authProfile } = useAuthStore();
-  const { width } = Dimensions.get('window');
-  const isMobile = width < 768;
+  const { user } = useAuthStore();
+  const { width: SCREEN_WIDTH } = Dimensions.get('window');
+  const isMobile = SCREEN_WIDTH < 768;
 
   // ── Password States ──
   const [currentPw, setCurrentPw] = useState('');
@@ -150,15 +153,15 @@ export default function SecuritySettingsScreen() {
       if (user) {
         const { data } = await supabase
           .from('profiles')
-          .select('*')
+          .select('biometrics_enabled, custom_api_key')
           .eq('id', user.id)
           .maybeSingle();
+
         if (data) {
-          const profile = data as any;
-          setBioEnabled(!!profile.biometrics_enabled);
+          setBioEnabled(!!data.biometrics_enabled);
           try {
-            if (profile.custom_api_key) {
-              const keys = JSON.parse(profile.custom_api_key);
+            if (data.custom_api_key) {
+              const keys = JSON.parse(data.custom_api_key);
               setApiKeys({
                 openai: keys.openai ?? '',
                 gemini: keys.gemini ?? '',
@@ -166,7 +169,7 @@ export default function SecuritySettingsScreen() {
               });
             }
           } catch (e) {
-            console.error('Vault integrity check failed.');
+            console.error('Vault integrity check failed.', e);
           }
         }
       }
@@ -183,11 +186,11 @@ export default function SecuritySettingsScreen() {
         : 'Authorize Biometric Shield',
     });
 
-    if (result.success) {
+    if (result.success && user) {
       const { error } = await supabase
         .from('profiles')
-        .update({ biometrics_enabled: !bioEnabled } as any)
-        .eq('id', user?.id ?? ''); // FIXED TS ERROR
+        .update({ biometrics_enabled: !bioEnabled })
+        .eq('id', user.id);
 
       if (!error) setBioEnabled(!bioEnabled);
     }
@@ -209,7 +212,7 @@ export default function SecuritySettingsScreen() {
     }
 
     setIsRotating(true);
-    // In a production environment, we assume re-authentication happened.
+    // Note: Requires the user to have recently signed in for security purposes
     const { error } = await supabase.auth.updateUser({ password: newPw });
 
     if (error) {
@@ -228,12 +231,23 @@ export default function SecuritySettingsScreen() {
 
   // ── Action: API Vault Save ──
   const handleSaveApiVault = async () => {
+    if (!user) return;
     setIsSyncingKeys(true);
-    const vaultString = JSON.stringify(apiKeys);
+
+    // Only save keys that are actually provided to keep the DB clean
+    const cleanedKeys = {
+      ...(apiKeys.openai ? { openai: apiKeys.openai } : {}),
+      ...(apiKeys.gemini ? { gemini: apiKeys.gemini } : {}),
+      ...(apiKeys.anthropic ? { anthropic: apiKeys.anthropic } : {}),
+    };
+
+    const vaultString =
+      Object.keys(cleanedKeys).length > 0 ? JSON.stringify(cleanedKeys) : null;
+
     const { error } = await supabase
       .from('profiles')
       .update({ custom_api_key: vaultString })
-      .eq('id', user?.id ?? ''); // FIXED TS ERROR
+      .eq('id', user.id);
 
     if (error) {
       Alert.alert('Vault Error', error.message);
@@ -246,11 +260,10 @@ export default function SecuritySettingsScreen() {
   const entropyScore = calculateEntropy(newPw);
 
   return (
-    <SafeAreaView className="flex-1 bg-[#020205]">
-      <View className="absolute inset-0 overflow-hidden" pointerEvents="none">
-        <NeuralOrb delay={0} color="#FF007F" />
-        <NeuralOrb delay={4000} color="#8A2BE2" />
-      </View>
+    <SafeAreaView className="flex-1 bg-[#000012]">
+      {/* Background Orbs */}
+      <NeuralOrb delay={0} color={THEME.danger} top={-50} left={-100} />
+      <NeuralOrb delay={4000} color={THEME.purple} bottom={-100} right={-50} />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -258,251 +271,288 @@ export default function SecuritySettingsScreen() {
       >
         <ScrollView
           showsVerticalScrollIndicator={false}
-          style={{ flex: 1 }}
-          contentContainerStyle={{ flexGrow: 1, paddingBottom: 150 }}
+          contentContainerStyle={{
+            paddingHorizontal: isMobile ? 16 : 40,
+            paddingTop: 16,
+            paddingBottom: 150,
+            flexGrow: 1,
+            maxWidth: 800, // Thinner width for settings pages looks cleaner
+            alignSelf: 'center',
+            width: '100%',
+          }}
         >
-          <View className="w-full max-w-2xl px-6 pt-12 mx-auto">
-            {/* ── RETURN NAVIGATION ── */}
+          {/* ── RETURN NAVIGATION ── */}
+          <FadeIn delay={100} className="z-50 flex-col mb-12">
             <TouchableOpacity
               onPress={() =>
                 router.canGoBack() ? router.back() : router.replace('/')
               }
-              className="flex-row items-center mb-10 gap-x-2"
+              className="flex-row items-center self-start mb-8 transition-transform gap-x-3 active:scale-95"
               activeOpacity={0.7}
             >
-              <ArrowBigLeftDash size={24} color="#FF007F" />
+              <ArrowBigLeftDash size={22} color={THEME.danger} />
               <Text className="text-[11px] font-black tracking-[4px] text-[#FF007F] uppercase">
                 RETURN
               </Text>
             </TouchableOpacity>
 
-            <FadeIn>
-              <View className="flex-row items-center justify-between mb-12">
-                <View>
-                  <Text className="text-5xl font-black leading-none tracking-tighter text-white uppercase md:text-6xl">
-                    SECURITY <Text className="text-[#FF007F]">VAULT</Text>
-                  </Text>
-                  <View className="h-1 w-24 bg-[#FF007F] mt-6 rounded-full shadow-[0_0_15px_#FF007F]" />
-                </View>
-              </View>
-            </FadeIn>
+            <View>
+              <Text className="text-4xl font-black leading-none tracking-tighter text-white uppercase md:text-5xl">
+                Security <Text style={{ color: THEME.danger }}>Vault</Text>
+              </Text>
+              <View className="h-1 w-24 bg-[#FF007F] mt-4 rounded-full shadow-[0_0_15px_#FF007F]" />
+            </View>
+          </FadeIn>
 
-            {/* ── BIOMETRIC SHIELD ── */}
-            <FadeIn delay={100}>
-              <GlassCard className="p-10 mb-8 border-white/5">
-                <View className="flex-row items-center mb-8 gap-x-4">
-                  <Fingerprint size={28} color="#FF007F" />
-                  <Text className="text-xl font-black text-white uppercase">
-                    Biometric Kernel
-                  </Text>
-                </View>
-
-                <View className="flex-row items-center justify-between p-6 border bg-black/60 border-white/10 rounded-3xl">
-                  <View>
-                    <Text className="text-sm font-bold text-white uppercase">
-                      System Access Toggle
-                    </Text>
-                    <Text className="text-[10px] text-white/30 uppercase mt-1">
-                      Status:{' '}
-                      {bioSupported
-                        ? bioEnabled
-                          ? 'ACTIVE'
-                          : 'READY'
-                        : 'NO HARDWARE'}
-                    </Text>
-                  </View>
-                  <TouchableOpacity
-                    onPress={handleBioToggle}
-                    disabled={!bioSupported || bioLoading}
-                    style={[
-                      styles.toggleBase,
-                      bioEnabled ? styles.toggleActive : styles.toggleInactive,
-                    ]}
-                    className="p-1 rounded-full"
-                  >
-                    <View
-                      style={[
-                        styles.toggleKnob,
-                        bioEnabled ? styles.knobActive : styles.knobInactive,
-                      ]}
-                    />
-                  </TouchableOpacity>
-                </View>
-
-                {bioLoading && (
-                  <View className="absolute inset-0 flex-row items-center justify-center bg-black/50">
-                    <ActivityIndicator size="large" color="#FF007F" />
-                  </View>
-                )}
-              </GlassCard>
-            </FadeIn>
-
-            {/* ── NOTE: The rest of the modules (Credential Rotation, AI Vault, Danger Zone) would follow the same pattern as above, with appropriate adjustments for their specific functionalities and UI elements. */}
-
-            {/* ── CREDENTIAL ROTATION ── */}
-            <FadeIn delay={200}>
-              <GlassCard className="p-8 mb-8 border-white/5">
-                <View className="flex-row items-center mb-10 gap-x-4">
-                  <Lock size={24} color="#FF007F" />
-                  <Text className="text-xl font-black text-white uppercase">
-                    Credentials Protocol
-                  </Text>
-                </View>
-
-                <View className="gap-y-6">
-                  <View>
-                    <Text className="text-[9px] font-black text-[#FF007F] tracking-[3px] uppercase mb-4 ml-1">
-                      Current Verification
-                    </Text>
-                    <Input
-                      value={currentPw}
-                      onChangeText={setCurrentPw}
-                      secureTextEntry
-                      placeholder="Current Password"
-                    />
-                  </View>
-
-                  <View>
-                    <Text className="text-[9px] font-black text-[#FF007F] tracking-[3px] uppercase mb-4 ml-1">
-                      New Identity Code
-                    </Text>
-                    <Input
-                      value={newPw}
-                      onChangeText={setNewPw}
-                      secureTextEntry
-                      placeholder="Min 10 Characters"
-                    />
-                    {newPw.length > 0 && (
-                      <View className="flex-row h-1 px-1 mt-4 gap-x-2">
-                        {[1, 2, 3, 4].map((n) => (
-                          <View
-                            key={n}
-                            className="flex-1 rounded-full"
-                            style={{
-                              backgroundColor:
-                                entropyScore >= n
-                                  ? ENTROPY_COLORS[entropyScore]
-                                  : 'rgba(255,255,255,0.05)',
-                            }}
-                          />
-                        ))}
-                      </View>
-                    )}
-                  </View>
-
-                  <View>
-                    <Text className="text-[9px] font-black text-[#FF007F] tracking-[3px] uppercase mb-4 ml-1">
-                      Verify Identity Code
-                    </Text>
-                    <Input
-                      value={confirmPw}
-                      onChangeText={setConfirmPw}
-                      secureTextEntry
-                      placeholder="Verify New Code"
-                    />
-                  </View>
-
-                  <Button
-                    title={isRotating ? 'ROTATING...' : 'ROTATE CREDENTIALS'}
-                    onPress={handleRotateCredentials}
-                    isLoading={isRotating}
-                    className="py-5 mt-4"
-                  />
-                </View>
-              </GlassCard>
-            </FadeIn>
-
-            {/* ── AI INTEGRATION VAULT ── */}
-            <FadeIn delay={300}>
-              <GlassCard className="p-8 mb-8 border-white/5">
-                <View className="flex-row items-center mb-10 gap-x-4">
-                  <Cpu size={24} color="#00F0FF" />
-                  <Text className="text-xl font-black text-white uppercase">
-                    AI Nodes (AES-256)
-                  </Text>
-                </View>
-
-                <View className="gap-y-8">
-                  <View>
-                    <Text className="text-[9px] font-black text-[#00F0FF] tracking-[3px] uppercase mb-4 ml-1">
-                      OpenAI API Key
-                    </Text>
-                    <Input
-                      value={apiKeys.openai}
-                      onChangeText={(v) =>
-                        setApiKeys((p) => ({ ...p, openai: v }))
-                      }
-                      placeholder="sk-..."
-                    />
-                  </View>
-                  <View>
-                    <Text className="text-[9px] font-black text-[#00F0FF] tracking-[3px] uppercase mb-4 ml-1">
-                      Google Gemini Key
-                    </Text>
-                    <Input
-                      value={apiKeys.gemini}
-                      onChangeText={(v) =>
-                        setApiKeys((p) => ({ ...p, gemini: v }))
-                      }
-                      placeholder="AIza..."
-                    />
-                  </View>
-                  <View>
-                    <Text className="text-[9px] font-black text-[#00F0FF] tracking-[3px] uppercase mb-4 ml-1">
-                      Anthropic Key
-                    </Text>
-                    <Input
-                      value={apiKeys.anthropic}
-                      onChangeText={(v) =>
-                        setApiKeys((p) => ({ ...p, anthropic: v }))
-                      }
-                      placeholder="sk-ant-..."
-                    />
-                  </View>
-
-                  <Button
-                    title={isSyncingKeys ? 'SEALING...' : 'SEAL VAULT'}
-                    onPress={handleSaveApiVault}
-                    isLoading={isSyncingKeys}
-                    variant="primary"
-                    className="py-5"
-                  />
-                </View>
-              </GlassCard>
-            </FadeIn>
-
-            {/* ── DANGER ZONE ── */}
-            <FadeIn delay={400}>
-              <GlassCard className="p-10 border-rose-500/10 bg-rose-500/5">
-                <View className="flex-row items-center mb-6 gap-x-4">
-                  <ShieldAlert size={28} color="#EF4444" />
-                  <Text className="text-xl font-black text-white uppercase">
-                    Identity Purge
-                  </Text>
-                </View>
-                <Text className="mb-10 text-xs leading-6 tracking-widest uppercase text-white/30">
-                  Permanent deconstruction of all digital footprints from the
-                  NorthOS node.
+          {/* ── BIOMETRIC SHIELD ── */}
+          <FadeIn delay={200}>
+            <GlassCard className="p-6 md:p-10 mb-8 bg-white/[0.015] border-white/5 rounded-[32px]">
+              <View className="flex-row items-center mb-8 gap-x-4">
+                <Fingerprint size={28} color={THEME.danger} />
+                <Text className="text-lg font-black tracking-widest text-white uppercase md:text-xl">
+                  Biometric Kernel
                 </Text>
+              </View>
+
+              <View className="flex-row items-center justify-between p-5 md:p-6 border bg-black/40 border-white/10 rounded-[24px]">
+                <View>
+                  <Text className="text-xs font-bold tracking-wider text-white uppercase md:text-sm">
+                    System Access Toggle
+                  </Text>
+                  <Text className="text-[9px] md:text-[10px] font-black text-white/30 uppercase tracking-[2px] mt-1.5">
+                    Status:{' '}
+                    {bioSupported
+                      ? bioEnabled
+                        ? 'ACTIVE'
+                        : 'READY'
+                      : 'NO HARDWARE'}
+                  </Text>
+                </View>
                 <TouchableOpacity
-                  onPress={() =>
-                    Alert.alert('Purge Protocol', 'Contact root administrator.')
-                  }
-                  className="items-center py-5 border border-rose-500/20 bg-rose-500/10 rounded-2xl"
+                  onPress={handleBioToggle}
+                  disabled={!bioSupported || bioLoading}
+                  style={[
+                    styles.toggleBase,
+                    bioEnabled ? styles.toggleActive : styles.toggleInactive,
+                  ]}
+                  className="p-1 rounded-full"
                 >
-                  <Text className="text-xs font-black text-rose-500 uppercase tracking-[4px]">
-                    DECONSTRUCT ACCOUNT
+                  <View
+                    style={[
+                      styles.toggleKnob,
+                      bioEnabled ? styles.knobActive : styles.knobInactive,
+                    ]}
+                  />
+                </TouchableOpacity>
+              </View>
+
+              {bioLoading && (
+                <View className="absolute inset-0 flex-row items-center justify-center bg-[#000012]/50 rounded-[32px]">
+                  <ActivityIndicator size="large" color={THEME.danger} />
+                </View>
+              )}
+            </GlassCard>
+          </FadeIn>
+
+          {/* ── CREDENTIAL ROTATION ── */}
+          <FadeIn delay={300}>
+            <GlassCard className="p-6 md:p-10 mb-8 bg-white/[0.015] border-white/5 rounded-[32px]">
+              <View className="flex-row items-center mb-10 gap-x-4">
+                <Lock size={24} color={THEME.danger} />
+                <Text className="text-lg font-black tracking-widest text-white uppercase md:text-xl">
+                  Credentials Protocol
+                </Text>
+              </View>
+
+              <View className="gap-y-6">
+                <View>
+                  <Text className="text-[9px] font-black text-[#FF007F] tracking-[3px] uppercase mb-3 ml-2">
+                    Current Verification
+                  </Text>
+                  <TextInput
+                    value={currentPw}
+                    onChangeText={setCurrentPw}
+                    secureTextEntry
+                    placeholder="••••••••••••"
+                    placeholderTextColor="rgba(255,255,255,0.2)"
+                    className="h-14 px-5 font-mono text-sm text-white border rounded-[20px] bg-black/40 border-white/10 focus:border-[#FF007F]"
+                  />
+                </View>
+
+                <View>
+                  <Text className="text-[9px] font-black text-[#FF007F] tracking-[3px] uppercase mb-3 ml-2">
+                    New Identity Code
+                  </Text>
+                  <TextInput
+                    value={newPw}
+                    onChangeText={setNewPw}
+                    secureTextEntry
+                    placeholder="Min 10 Characters"
+                    placeholderTextColor="rgba(255,255,255,0.2)"
+                    className="h-14 px-5 font-mono text-sm text-white border rounded-[20px] bg-black/40 border-white/10 focus:border-[#FF007F]"
+                  />
+                  {newPw.length > 0 && (
+                    <View className="flex-row h-1.5 px-2 mt-4 gap-x-2">
+                      {[1, 2, 3, 4].map((n) => (
+                        <View
+                          key={n}
+                          className="flex-1 transition-colors duration-300 rounded-full"
+                          style={{
+                            backgroundColor:
+                              entropyScore >= n
+                                ? ENTROPY_COLORS[entropyScore]
+                                : 'rgba(255,255,255,0.1)',
+                          }}
+                        />
+                      ))}
+                    </View>
+                  )}
+                </View>
+
+                <View>
+                  <Text className="text-[9px] font-black text-[#FF007F] tracking-[3px] uppercase mb-3 ml-2">
+                    Verify Identity Code
+                  </Text>
+                  <TextInput
+                    value={confirmPw}
+                    onChangeText={setConfirmPw}
+                    secureTextEntry
+                    placeholder="Verify New Code"
+                    placeholderTextColor="rgba(255,255,255,0.2)"
+                    className="h-14 px-5 font-mono text-sm text-white border rounded-[20px] bg-black/40 border-white/10 focus:border-[#FF007F]"
+                  />
+                </View>
+
+                <TouchableOpacity
+                  onPress={handleRotateCredentials}
+                  disabled={isRotating}
+                  className="flex-row items-center justify-center h-14 mt-4 bg-[#FF007F]/10 border border-[#FF007F]/30 rounded-[20px] active:scale-95 transition-transform"
+                >
+                  {isRotating ? (
+                    <ActivityIndicator size="small" color={THEME.danger} />
+                  ) : null}
+                  <Text
+                    className={cn(
+                      'text-[11px] font-black uppercase tracking-widest',
+                      isRotating ? 'ml-3 text-white/50' : 'text-[#FF007F]',
+                    )}
+                  >
+                    {isRotating ? 'Rotating...' : 'Rotate Credentials'}
                   </Text>
                 </TouchableOpacity>
-              </GlassCard>
-            </FadeIn>
+              </View>
+            </GlassCard>
+          </FadeIn>
 
-            <View className="items-center mt-20 opacity-30">
-              <View className="h-[1px] w-12 bg-white/20 mb-4" />
-              <Text className="text-[9px] font-mono tracking-[6px] text-white uppercase">
-                NorthOS Security Kernel v13.0
+          {/* ── AI INTEGRATION VAULT ── */}
+          <FadeIn delay={400}>
+            <GlassCard className="p-6 md:p-10 mb-8 bg-white/[0.015] border-white/5 rounded-[32px]">
+              <View className="flex-row items-center mb-10 gap-x-4">
+                <Cpu size={24} color={THEME.cyan} />
+                <Text className="text-lg font-black tracking-widest text-white uppercase md:text-xl">
+                  AI Nodes (AES-256)
+                </Text>
+              </View>
+
+              <View className="gap-y-6">
+                <View>
+                  <Text className="text-[9px] font-black text-[#00F0FF] tracking-[3px] uppercase mb-3 ml-2">
+                    OpenAI API Key
+                  </Text>
+                  <TextInput
+                    value={apiKeys.openai}
+                    onChangeText={(v) =>
+                      setApiKeys((p) => ({ ...p, openai: v }))
+                    }
+                    placeholder="sk-..."
+                    placeholderTextColor="rgba(255,255,255,0.2)"
+                    className="h-14 px-5 font-mono text-sm text-white border rounded-[20px] bg-black/40 border-white/10 focus:border-[#00F0FF]"
+                  />
+                </View>
+                <View>
+                  <Text className="text-[9px] font-black text-[#00F0FF] tracking-[3px] uppercase mb-3 ml-2">
+                    Google Gemini Key
+                  </Text>
+                  <TextInput
+                    value={apiKeys.gemini}
+                    onChangeText={(v) =>
+                      setApiKeys((p) => ({ ...p, gemini: v }))
+                    }
+                    placeholder="AIza..."
+                    placeholderTextColor="rgba(255,255,255,0.2)"
+                    className="h-14 px-5 font-mono text-sm text-white border rounded-[20px] bg-black/40 border-white/10 focus:border-[#00F0FF]"
+                  />
+                </View>
+                <View>
+                  <Text className="text-[9px] font-black text-[#00F0FF] tracking-[3px] uppercase mb-3 ml-2">
+                    Anthropic Key
+                  </Text>
+                  <TextInput
+                    value={apiKeys.anthropic}
+                    onChangeText={(v) =>
+                      setApiKeys((p) => ({ ...p, anthropic: v }))
+                    }
+                    placeholder="sk-ant-..."
+                    placeholderTextColor="rgba(255,255,255,0.2)"
+                    className="h-14 px-5 font-mono text-sm text-white border rounded-[20px] bg-black/40 border-white/10 focus:border-[#00F0FF]"
+                  />
+                </View>
+
+                <TouchableOpacity
+                  onPress={handleSaveApiVault}
+                  disabled={isSyncingKeys}
+                  className="flex-row items-center justify-center h-14 mt-4 bg-[#00F0FF]/10 border border-[#00F0FF]/30 rounded-[20px] active:scale-95 transition-transform"
+                >
+                  {isSyncingKeys ? (
+                    <ActivityIndicator size="small" color={THEME.cyan} />
+                  ) : null}
+                  <Text
+                    className={cn(
+                      'text-[11px] font-black uppercase tracking-widest',
+                      isSyncingKeys ? 'ml-3 text-white/50' : 'text-[#00F0FF]',
+                    )}
+                  >
+                    {isSyncingKeys ? 'Sealing...' : 'Seal Vault'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </GlassCard>
+          </FadeIn>
+
+          {/* ── DANGER ZONE ── */}
+          <FadeIn delay={500}>
+            <GlassCard className="p-8 md:p-10 border-rose-500/10 bg-rose-500/5 rounded-[32px]">
+              <View className="flex-row items-center mb-6 gap-x-4">
+                <ShieldAlert size={28} color={THEME.danger} />
+                <Text className="text-lg font-black tracking-widest text-white uppercase md:text-xl">
+                  Identity Purge
+                </Text>
+              </View>
+              <Text className="mb-10 text-[10px] md:text-xs leading-6 tracking-[2px] uppercase text-white/40">
+                Permanent deconstruction of all digital footprints from the
+                VerAI
               </Text>
-            </View>
+              <TouchableOpacity
+                onPress={() =>
+                  Alert.alert(
+                    'Purge Protocol',
+                    'Contact root administrator to execute full data purge.',
+                  )
+                }
+                className="items-center justify-center h-14 border border-rose-500/20 bg-rose-500/10 rounded-[20px] active:scale-95 transition-transform"
+              >
+                <Text className="text-[10px] md:text-xs font-black text-rose-500 uppercase tracking-[4px]">
+                  Deconstruct Account
+                </Text>
+              </TouchableOpacity>
+            </GlassCard>
+          </FadeIn>
+
+          <View className="items-center mt-20 opacity-30">
+            <View className="h-[1px] w-12 bg-white/20 mb-4" />
+            <Text className="text-[9px] font-mono tracking-[6px] text-white uppercase text-center">
+              VerAI Security
+            </Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -511,29 +561,19 @@ export default function SecuritySettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#020205' },
-  flexOne: { flex: 1 },
-  scrollContent: { flexGrow: 1, paddingBottom: 150 },
-  maxLayoutWidth: {
-    width: '100%',
-    maxWidth: 800,
-    alignSelf: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 60,
-  },
   toggleBase: {
-    width: 50,
-    height: 26,
-    borderRadius: 13,
+    width: 56,
+    height: 30,
+    borderRadius: 15,
     padding: 3,
     justifyContent: 'center',
   },
-  toggleActive: { backgroundColor: '#FF007F' },
+  toggleActive: { backgroundColor: THEME.danger },
   toggleInactive: { backgroundColor: 'rgba(255,255,255,0.1)' },
   toggleKnob: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: '#FFF',
   },
   knobActive: { alignSelf: 'flex-end' },

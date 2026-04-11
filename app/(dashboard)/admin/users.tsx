@@ -1,13 +1,13 @@
 /**
  * app/(dashboard)/admin/users.tsx
- * VerAI - User Management & Security Protocols
- *  NorthOS
+ * VerAI - Identity Registry & Access Control
  * ----------------------------------------------------------------------------
- * FEATURES:
- * 1. AMBIENT ENGINE: Integrated custom #01111fbe background with breathing.
+ * MODULE OVERVIEW:
+ * 1. AMBIENT ENGINE: Liquid Neon Orbs; 100% APK Touch-Safe (`pointerEvents: 'none'`).
  * 2. REAL-TIME SYNC: Listens to the 'profiles' table for instant registry updates.
- * 3. SECURITY SUITE: Modular banning, unbanning, role, and tier escalation.
- * 4. RESPONSIVE UX: Compact, auto-wrapping button grid optimized for Web/Mobile.
+ * 3. TIER-LESS ARCHITECTURE: Purged 'tier' dependency; relies strictly on 'role'.
+ * 4. BAN MANAGEMENT: Custom ban durations + instant unban restores. Banned users stay visible.
+ * 5. DESIGN SYSTEM: Strictly utilizes the THEME object for all color mapping.
  * ----------------------------------------------------------------------------
  */
 
@@ -38,18 +38,19 @@ import {
   Trash2,
   Calendar,
   ShieldAlert,
-  Clock,
   Mail,
   Fingerprint,
   AlertTriangle,
   RefreshCcw,
-  Crown,
   Coins,
   XCircle,
   Unlock,
   PlusCircle,
+  KeyRound,
   Shield,
-  Activity,
+  CheckCircle2,
+  Clock,
+  ArrowBigLeftDash, // Added Return Icon
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import Animated, {
@@ -60,6 +61,8 @@ import Animated, {
   withTiming,
   interpolate,
   FadeInDown,
+  Easing,
+  FadeInUp,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 
@@ -69,6 +72,7 @@ import { GlassCard } from '../../../components/ui/GlassCard';
 import { FadeIn } from '../../../components/animations/FadeIn';
 import { cn } from '../../../lib/utils';
 
+// Enable Android Layout Animations
 if (
   Platform.OS === 'android' &&
   UIManager.setLayoutAnimationEnabledExperimental
@@ -76,19 +80,20 @@ if (
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
+// ─── STRICT THEME ENFORCEMENT ───
 const THEME = {
-  obsidian: '#020205',
+  obsidian: '#000012',
   indigo: '#6366f1',
   slate: '#94a3b8',
-  danger: '#ef4444',
-  success: '#10b981',
-  warning: '#f59e0b',
+  danger: '#FF007F', // Neon Pink
+  success: '#32FF00', // Neon Green
+  warning: '#F59E0B', // Amber
   white: '#ffffff',
-  cyan: '#00F0FF',
+  cyan: '#00F0FF', // Neon Cyan
+  purple: '#8A2BE2', // Neon Purple
 };
 
 type UserRole = Database['public']['Enums']['user_role'];
-type UserTier = Database['public']['Enums']['user_tier'];
 
 interface UserProfile {
   id: string;
@@ -96,67 +101,78 @@ interface UserProfile {
   full_name: string | null;
   avatar_url: string | null;
   role: UserRole;
-  tier: UserTier;
   tokens_balance: number;
   status: string | null;
   banned_until: string | null;
   created_at: string;
+  custom_api_key: string | null;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// MODULE 1: AMBIENT BACKGROUND ENGINE (Breathing Animation)
+// MODULE 1: AMBIENT ORB ENGINE (APK TOUCH-SAFE)
 // ══════════════════════════════════════════════════════════════════════════════
-const AmbientGradient = ({ delay = 0, color = '#3B82F6' }) => {
-  const pulse = useSharedValue(0);
+const AmbientOrb = ({
+  color,
+  size,
+  top,
+  left,
+  right,
+  bottom,
+  opacity = 0.05,
+  delay = 0,
+}: any) => {
   const { width, height } = Dimensions.get('window');
+  const drift = useSharedValue(0);
 
   useEffect(() => {
-    pulse.value = withDelay(
+    drift.value = withDelay(
       delay,
-      withRepeat(withTiming(1, { duration: 10000 }), -1, true),
+      withRepeat(
+        withTiming(1, { duration: 8000, easing: Easing.inOut(Easing.sin) }),
+        -1,
+        true,
+      ),
     );
-  }, [delay, pulse]);
+  }, [delay, drift]);
 
-  const animatedStyle = useAnimatedStyle(() => ({
+  const anim = useAnimatedStyle(() => ({
     transform: [
-      { scale: interpolate(pulse.value, [0, 1], [1, 1.4]) },
-      { translateX: interpolate(pulse.value, [0, 1], [0, width * 0.05]) },
-      { translateY: interpolate(pulse.value, [0, 1], [0, height * 0.05]) },
+      { translateX: interpolate(drift.value, [0, 1], [0, width * 0.1]) },
+      { translateY: interpolate(drift.value, [0, 1], [0, height * 0.05]) },
+      { scale: interpolate(drift.value, [0, 1], [0.9, 1.2]) },
     ],
-    opacity: interpolate(pulse.value, [0, 1], [0.04, 0.08]),
   }));
 
   return (
     <Animated.View
       style={[
-        animatedStyle,
         {
           position: 'absolute',
-          width: width * 1.5,
-          height: width * 1.5,
+          width: size,
+          height: size,
+          borderRadius: size,
           backgroundColor: color,
-          borderRadius: width,
+          opacity,
+          top,
+          left,
+          right,
+          bottom,
+          pointerEvents: 'none', // CRITICAL: Touch-safe for Android
         },
+        anim,
       ]}
     />
   );
 };
 
-const AmbientEngine = React.memo(() => (
-  <View
-    className="absolute inset-0 overflow-hidden bg-[#01111fbe]"
-    style={{ pointerEvents: 'none', zIndex: 0 }}
-  >
-    <AmbientGradient delay={0.5} color="#3B82F6" />
-    <AmbientGradient delay={3000} color="#8B5CF6" />
-  </View>
-));
-
 // ══════════════════════════════════════════════════════════════════════════════
-// 2. MAIN USER DIRECTORY COMPONENT
+// MODULE 2: MAIN USER DIRECTORY COMPONENT
 // ══════════════════════════════════════════════════════════════════════════════
 export default function AdminUsersScreen() {
   const router = useRouter();
+  const { width: SCREEN_WIDTH } = Dimensions.get('window');
+  const isMobile = SCREEN_WIDTH < 768;
+
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -168,10 +184,14 @@ export default function AdminUsersScreen() {
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
 
-  // --- DATA FETCH ENGINE ---
+  // Custom Ban State
+  const [customBanDays, setCustomBanDays] = useState('');
+
+  // ─── DATA FETCH ENGINE ───
   const loadUsers = useCallback(async (isSilent = false) => {
     if (!isSilent) setLoading(true);
     try {
+      // Fetches all users, ensuring banned ones remain in the list
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -188,7 +208,7 @@ export default function AdminUsersScreen() {
     }
   }, []);
 
-  // --- REAL-TIME SUBSCRIPTION ---
+  // ─── REAL-TIME SUBSCRIPTION ───
   useEffect(() => {
     loadUsers();
     const channelId = `admin_users_registry_${Date.now()}`;
@@ -218,49 +238,53 @@ export default function AdminUsersScreen() {
     }
   };
 
-  // --- ADMIN ACTIONS ---
-
-  const handleRoleTierUpdate = async (
-    type: 'role' | 'tier',
-    newValue: string,
-  ) => {
+  // ─── ADMIN ACTIONS ───
+  const handleRoleUpdate = async (newValue: string) => {
     if (!selectedUser) return;
     triggerHaptic('selection');
 
     try {
-      const updatePayload =
-        type === 'role'
-          ? { role: newValue as UserRole }
-          : { tier: newValue as UserTier };
-
       const { error } = await supabase
         .from('profiles')
-        .update(updatePayload as any)
+        .update({ role: newValue as UserRole })
         .eq('id', selectedUser.id);
 
       if (error) throw error;
 
-      setSelectedUser((prev) => (prev ? { ...prev, [type]: newValue } : null));
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setSelectedUser((prev) =>
+        prev ? { ...prev, role: newValue as UserRole } : null,
+      );
+      setUsers(
+        users.map((u) =>
+          u.id === selectedUser.id ? { ...u, role: newValue as UserRole } : u,
+        ),
+      );
       triggerHaptic('success');
     } catch (e: any) {
       Alert.alert('Update Failed', e.message);
     }
   };
 
-  const handleAddTokens = async (amount: number) => {
-    if (!selectedUser) return;
+  const handleAddTokens = async (
+    amount: number,
+    userId: string,
+    currentBalance: number,
+  ) => {
     triggerHaptic('success');
     try {
-      const newBalance = selectedUser.tokens_balance + amount;
+      const newBalance = currentBalance + amount;
       const { error } = await supabase
         .from('profiles')
         .update({ tokens_balance: newBalance })
-        .eq('id', selectedUser.id);
+        .eq('id', userId);
 
       if (error) throw error;
-      Alert.alert(
-        'Tokens Granted',
-        `${amount} tokens added to ${selectedUser.email}. New balance: ${newBalance}`,
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setUsers(
+        users.map((u) =>
+          u.id === userId ? { ...u, tokens_balance: newBalance } : u,
+        ),
       );
     } catch (e: any) {
       Alert.alert('Transaction Failed', e.message);
@@ -271,6 +295,7 @@ export default function AdminUsersScreen() {
     if (!selectedUser) return;
     triggerHaptic('warning');
     setBanModalVisible(false);
+    setCustomBanDays('');
 
     try {
       let bannedUntil = null;
@@ -279,7 +304,7 @@ export default function AdminUsersScreen() {
         date.setDate(date.getDate() + durationDays);
         bannedUntil = date.toISOString();
       } else {
-        bannedUntil = '2099-12-31T23:59:59.000Z';
+        bannedUntil = '2099-12-31T23:59:59.000Z'; // Permanent Lock
       }
 
       const { error } = await supabase
@@ -288,24 +313,37 @@ export default function AdminUsersScreen() {
         .eq('id', selectedUser.id);
 
       if (error) throw error;
+
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setUsers(
+        users.map((u) =>
+          u.id === selectedUser.id
+            ? { ...u, status: 'banned', banned_until: bannedUntil }
+            : u,
+        ),
+      );
       triggerHaptic('success');
     } catch (e: any) {
       Alert.alert('Protocol Failed', e.message);
     }
   };
 
-  const executeUnban = async () => {
-    if (!selectedUser) return;
+  const executeUnban = async (userId: string) => {
     triggerHaptic('success');
-    setBanModalVisible(false);
-
     try {
       const { error } = await supabase
         .from('profiles')
         .update({ status: 'active', banned_until: null })
-        .eq('id', selectedUser.id);
+        .eq('id', userId);
 
       if (error) throw error;
+
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setUsers(
+        users.map((u) =>
+          u.id === userId ? { ...u, status: 'active', banned_until: null } : u,
+        ),
+      );
     } catch (e: any) {
       Alert.alert('Restore Failed', e.message);
     }
@@ -322,13 +360,16 @@ export default function AdminUsersScreen() {
         .eq('id', selectedUser.id);
 
       if (error) throw error;
+
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setUsers(users.filter((u) => u.id !== selectedUser.id));
       triggerHaptic('success');
     } catch (e: any) {
       Alert.alert('Purge Failed', e.message);
     }
   };
 
-  // --- CARD RENDERER ---
+  // ─── CARD RENDERER ───
   const renderUserCard = ({
     item,
     index,
@@ -336,23 +377,12 @@ export default function AdminUsersScreen() {
     item: UserProfile;
     index: number;
   }) => {
-    const isBanned = item.status === 'banned';
-    const roleColor =
-      item.role === 'admin'
-        ? THEME.danger
-        : item.role === 'support'
-          ? THEME.indigo
-          : item.role === 'premium'
-            ? THEME.warning
-            : THEME.slate;
-    const tierColor =
-      item.tier === 'enterprise'
-        ? '#c084fc'
-        : item.tier === 'pro'
-          ? '#38bdf8'
-          : THEME.success;
+    const isBanned = item.status === 'banned' || item.banned_until !== null;
 
-    // Formatting date neatly
+    const cardBgClass = isBanned
+      ? 'bg-[#FF007F]/[0.05] border-[#FF007F]/30'
+      : 'bg-white/[0.015] border-white/5';
+
     const joinDate = new Date(item.created_at).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
@@ -360,21 +390,21 @@ export default function AdminUsersScreen() {
     });
 
     return (
-      <FadeIn delay={index * 50}>
+      <FadeIn delay={Math.min(index * 50, 500)}>
         <GlassCard
           className={cn(
-            'p-6 mb-5 border bg-[#0a0f1c]/80 border-white/5 rounded-[24px] w-full max-w-4xl mx-auto shadow-2xl shadow-black/50',
-            isBanned && 'bg-rose-500/10 border-rose-500/30',
+            'p-5 md:p-6 mb-5 border rounded-3xl w-full max-w-4xl mx-auto overflow-hidden shadow-2xl',
+            cardBgClass,
           )}
         >
           {/* Top Section: Avatar & Info */}
-          <View className="flex-row items-start gap-5">
+          <View className="flex-row items-start gap-4 md:gap-5">
             <View
               className={cn(
-                'items-center justify-center overflow-hidden border-2 rounded-full w-14 h-14 shrink-0',
+                'items-center justify-center overflow-hidden border-2 rounded-full w-12 h-12 md:w-14 md:h-14 shrink-0',
                 isBanned
-                  ? 'bg-rose-500/10 border-rose-500/40'
-                  : 'bg-indigo-500/10 border-indigo-500/30',
+                  ? 'bg-[#FF007F]/10 border-[#FF007F]/40'
+                  : 'bg-[#00F0FF]/10 border-[#00F0FF]/30',
               )}
             >
               {item.avatar_url ? (
@@ -385,8 +415,8 @@ export default function AdminUsersScreen() {
               ) : (
                 <Text
                   className={cn(
-                    'text-xl font-black',
-                    isBanned ? 'text-rose-400' : 'text-indigo-400',
+                    'text-lg md:text-xl font-black',
+                    isBanned ? 'text-[#FF007F]' : 'text-[#00F0FF]',
                   )}
                 >
                   {(item.full_name || item.email || 'U')[0].toUpperCase()}
@@ -395,10 +425,10 @@ export default function AdminUsersScreen() {
             </View>
 
             <View className="flex-1">
-              <View className="flex-row flex-wrap items-center justify-between gap-2 mb-1">
+              <View className="flex-row flex-wrap items-center justify-between gap-2 mb-1.5">
                 <Text
                   className={cn(
-                    'text-lg font-bold text-white',
+                    'text-base md:text-lg font-bold text-white',
                     isBanned && 'line-through opacity-50',
                   )}
                 >
@@ -407,31 +437,33 @@ export default function AdminUsersScreen() {
 
                 <View className="flex-row flex-wrap gap-2">
                   {isBanned && (
-                    <View className="px-2 py-0.5 rounded border bg-rose-500/20 border-rose-500/50">
-                      <Text className="text-[9px] font-black uppercase text-rose-400 tracking-widest">
+                    <View className="px-2 py-0.5 rounded border bg-[#FF007F]/10 border-[#FF007F]/30">
+                      <Text className="text-[8px] md:text-[9px] font-black uppercase text-[#FF007F] tracking-widest">
                         RESTRICTED
                       </Text>
                     </View>
                   )}
                   <View
                     className={cn(
-                      'px-2 py-0.5 rounded border bg-white/5',
-                      `border-${roleColor}/30`,
+                      'px-2 py-0.5 rounded border',
+                      item.role === 'admin'
+                        ? 'bg-[#8A2BE2]/20 border-[#8A2BE2]/50'
+                        : item.role === 'premium'
+                          ? 'bg-[#F59E0B]/10 border-[#F59E0B]/30'
+                          : 'bg-white/5 border-white/10',
                     )}
                   >
-                    <Text className="text-[9px] font-black uppercase text-slate-300 tracking-widest">
-                      {item.role}
-                    </Text>
-                  </View>
-                  <View
-                    className="px-2 py-0.5 rounded border bg-white/5"
-                    style={{ borderColor: `${tierColor}40` }}
-                  >
                     <Text
-                      className="text-[9px] font-black uppercase tracking-widest"
-                      style={{ color: tierColor }}
+                      className={cn(
+                        'text-[8px] md:text-[9px] font-black uppercase tracking-widest',
+                        item.role === 'admin'
+                          ? 'text-[#8A2BE2]'
+                          : item.role === 'premium'
+                            ? 'text-[#F59E0B]'
+                            : 'text-white/50',
+                      )}
                     >
-                      {item.tier}
+                      {item.role || 'MEMBER'}
                     </Text>
                   </View>
                 </View>
@@ -439,80 +471,78 @@ export default function AdminUsersScreen() {
 
               <View className="flex-row items-center gap-2 mb-3">
                 <Mail size={12} color={THEME.slate} />
-                <Text className="text-sm font-medium text-slate-400">
+                <Text className="text-xs font-medium md:text-sm text-white/50">
                   {item.email}
                 </Text>
               </View>
 
               {/* Enhanced Stats Row */}
-              <View className="flex-row flex-wrap items-center gap-x-6 gap-y-2">
+              <View className="flex-row flex-wrap items-center gap-x-4 md:gap-x-6 gap-y-2">
                 <View className="flex-row items-center gap-1.5">
-                  <Coins size={14} color="#facc15" />
-                  <Text className="font-mono text-xs font-bold text-yellow-500/90">
+                  <Coins size={12} color={THEME.warning} />
+                  <Text className="font-mono text-[10px] md:text-xs font-bold text-[#F59E0B]">
                     {item.tokens_balance.toLocaleString()} BAL
                   </Text>
                 </View>
                 <View className="flex-row items-center gap-1.5">
-                  <Calendar size={12} color={THEME.slate} />
-                  <Text className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">
-                    Joined {joinDate}
+                  <KeyRound
+                    size={12}
+                    color={item.custom_api_key ? THEME.success : THEME.cyan}
+                    opacity={0.8}
+                  />
+                  <Text
+                    className={cn(
+                      'text-[9px] md:text-[10px] font-mono font-bold tracking-wider',
+                      item.custom_api_key ? 'text-[#32FF00]' : 'text-[#00F0FF]',
+                    )}
+                  >
+                    {item.custom_api_key ? '[BYO-KEY]' : '[SYSTEM]'}
                   </Text>
                 </View>
-                <View className="flex-row items-center gap-1.5">
-                  <Fingerprint size={12} color={THEME.slate} />
-                  <Text className="text-[10px] font-mono text-slate-500/70">
-                    {item.id}
+                <View className="flex-row items-center gap-1.5 hidden md:flex">
+                  <Calendar size={12} color={THEME.purple} />
+                  <Text className="text-[9px] md:text-[10px] font-mono font-bold text-white/30 uppercase tracking-wider">
+                    Joined {joinDate}
                   </Text>
                 </View>
               </View>
             </View>
           </View>
 
-          {/* CRITICAL FIX: Responsive, compact button grid.
-            Web: Stays tight and inline. Mobile: Wraps cleanly into a grid.
-          */}
-          <View className="flex-row flex-wrap items-center gap-2 pt-4 mt-5 border-t border-white/5">
+          {/* Action Buttons with Flex Wrap for perfect Mobile grid scaling */}
+          <View className="flex-row flex-wrap items-center gap-2 pt-4 mt-4 border-t md:gap-3 border-white/5">
             <TouchableOpacity
               onPress={() => {
                 setSelectedUser(item);
                 setRoleModalVisible(true);
               }}
-              className="flex-row items-center justify-center flex-1 min-w-[100px] max-w-[140px] gap-2 py-2.5 px-3 border border-white/5 bg-white/5 rounded-xl hover:bg-white/10"
+              className="flex-row items-center justify-center flex-1 min-w-[80px] md:min-w-[100px] gap-2 py-2.5 px-2 border border-white/5 bg-white/[0.03] rounded-xl hover:bg-white/10 active:scale-95"
             >
-              <UserCog size={14} color={THEME.indigo} />
-              <Text className="text-[10px] font-black text-slate-200 uppercase tracking-[1px]">
+              <UserCog size={14} color={THEME.cyan} />
+              <Text className="text-[9px] md:text-[10px] font-black text-white/80 uppercase tracking-widest">
                 Access
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              onPress={() => handleAddTokens(1000)}
-              className="flex-row items-center justify-center flex-1 min-w-[100px] max-w-[140px] gap-2 py-2.5 px-3 border border-white/5 bg-white/5 rounded-xl hover:bg-white/10"
+              onPress={() =>
+                handleAddTokens(1000, item.id, item.tokens_balance)
+              }
+              className="flex-row items-center justify-center flex-1 min-w-[80px] md:min-w-[100px] gap-2 py-2.5 px-2 border border-[#00F0FF]/20 bg-[#00F0FF]/10 rounded-xl hover:bg-[#00F0FF]/20 active:scale-95"
             >
-              <PlusCircle size={14} color="#38bdf8" />
-              <Text className="text-[10px] font-black text-sky-400 uppercase tracking-[1px]">
-                C +1K
-              </Text>
-            </TouchableOpacity>
-
-            {/* Placeholder for future detailed audit view */}
-            <TouchableOpacity
-              onPress={() => console.log('Audit feature pending...')}
-              className="flex-row items-center justify-center flex-1 min-w-[100px] max-w-[140px] gap-2 py-2.5 px-3 border border-white/5 bg-white/5 rounded-xl hover:bg-white/10"
-            >
-              <Activity size={14} color={THEME.cyan} />
-              <Text className="text-[10px] font-black text-cyan-400 uppercase tracking-[1px]">
-                Audit
+              <PlusCircle size={14} color={THEME.cyan} />
+              <Text className="text-[9px] md:text-[10px] font-black text-[#00F0FF] uppercase tracking-widest">
+                +1K
               </Text>
             </TouchableOpacity>
 
             {isBanned ? (
               <TouchableOpacity
-                onPress={() => executeUnban()}
-                className="flex-row items-center justify-center flex-1 min-w-[100px] max-w-[140px] gap-2 py-2.5 px-3 border border-emerald-500/20 bg-emerald-500/10 rounded-xl hover:bg-emerald-500/20"
+                onPress={() => executeUnban(item.id)}
+                className="flex-row items-center justify-center flex-1 min-w-[80px] md:min-w-[100px] gap-2 py-2.5 px-2 border border-[#32FF00]/20 bg-[#32FF00]/10 rounded-xl hover:bg-[#32FF00]/20 active:scale-95"
               >
                 <Unlock size={14} color={THEME.success} />
-                <Text className="text-[10px] font-black text-emerald-400 uppercase tracking-[1px]">
+                <Text className="text-[9px] md:text-[10px] font-black text-[#32FF00] uppercase tracking-widest">
                   Restore
                 </Text>
               </TouchableOpacity>
@@ -522,29 +552,30 @@ export default function AdminUsersScreen() {
                   setSelectedUser(item);
                   setBanModalVisible(true);
                 }}
-                className="flex-row items-center justify-center flex-1 min-w-[100px] max-w-[140px] gap-2 py-2.5 px-3 border border-white/5 bg-white/5 rounded-xl hover:bg-white/10"
+                className="flex-row items-center justify-center flex-1 min-w-[80px] md:min-w-[100px] gap-2 py-2.5 px-2 border border-white/5 bg-white/[0.03] rounded-xl hover:bg-white/10 active:scale-95"
               >
                 <Ban size={14} color={THEME.warning} />
-                <Text className="text-[10px] font-black text-yellow-500 uppercase tracking-[1px]">
+                <Text className="text-[9px] md:text-[10px] font-black text-[#F59E0B] uppercase tracking-widest">
                   Restrict
                 </Text>
               </TouchableOpacity>
             )}
 
-            {/* Pushes Purge to the right on wide desktop, wraps normally on mobile */}
-            <View className="flex-[2] min-w-[20px] md:block hidden" />
+            <View className="flex-[2] min-w-[10px] md:block hidden" />
 
             <TouchableOpacity
               onPress={() => {
                 setSelectedUser(item);
                 setDeleteModalVisible(true);
               }}
-              className="flex-row items-center justify-center flex-1 min-w-[100px] max-w-[140px] gap-2 py-2.5 px-3 border rounded-xl border-rose-500/10 bg-rose-500/5 hover:bg-rose-500/10 ml-auto"
+              className="flex-row items-center justify-center w-12 md:flex-1 md:min-w-[100px] md:max-w-[140px] gap-2 py-2.5 px-2 border rounded-xl border-[#FF007F]/10 bg-[#FF007F]/5 hover:bg-[#FF007F]/10 ml-auto active:scale-95"
             >
-              <Trash2 size={14} color={THEME.danger} />
-              <Text className="text-[10px] font-black text-rose-400 uppercase tracking-[1px]">
-                Purge
-              </Text>
+              <Trash2 size={14} color={THEME.danger} opacity={0.8} />
+              {!isMobile && (
+                <Text className="text-[10px] font-black text-[#FF007F] uppercase tracking-widest">
+                  Purge
+                </Text>
+              )}
             </TouchableOpacity>
           </View>
         </GlassCard>
@@ -553,52 +584,73 @@ export default function AdminUsersScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-[#01111f]">
-      <AmbientEngine />
+    <SafeAreaView className="flex-1 bg-[#000012]">
+      <AmbientOrb
+        color={THEME.cyan}
+        size={400}
+        top={-100}
+        left={-150}
+        opacity={0.04}
+        delay={0}
+      />
+      <AmbientOrb
+        color={THEME.purple}
+        size={300}
+        top={300}
+        right={-100}
+        opacity={0.05}
+        delay={2000}
+      />
 
       <View className="flex-1 w-full max-w-5xl mx-auto">
         {/* HEADER SECTION */}
-        <View className="flex-row items-center justify-between px-6 py-6 border-b border-white/5">
-          <View className="flex-row items-center gap-4">
-            <TouchableOpacity
-              onPress={() => router.back()}
-              className="items-center justify-center w-10 h-10 border rounded-2xl bg-white/5 border-white/10"
-            >
-              <ChevronLeft size={20} color="#fff" />
-            </TouchableOpacity>
+        <View className="flex-col px-6 pt-6 pb-4 border-b border-white/5">
+          <TouchableOpacity
+            onPress={() => router.replace('/admin')}
+            className="flex-row items-center mb-6 gap-x-3"
+            activeOpacity={0.7}
+            style={{ zIndex: 200, alignSelf: 'flex-start' }}
+          >
+            <ArrowBigLeftDash size={20} color={THEME.cyan} />
+            <Text className="text-[11px] font-black tracking-[4px] text-[#00F0FF] uppercase">
+              RETURN
+            </Text>
+          </TouchableOpacity>
+
+          <View className="flex-row items-center justify-between">
             <View>
-              <Text className="text-2xl font-black tracking-tighter text-white uppercase">
+              <Text className="text-3xl font-black tracking-tighter text-white uppercase">
                 Registry
               </Text>
-              <Text className="text-[10px] font-bold text-slate-500 uppercase tracking-[2px]">
+              <Text className="text-[9px] md:text-[10px] font-bold text-white/40 uppercase tracking-[2px] mt-1">
                 {users.length} Active PID Logs
               </Text>
             </View>
-          </View>
 
-          <TouchableOpacity
-            onPress={() => loadUsers(false)}
-            className="items-center justify-center w-10 h-10 border rounded-2xl bg-indigo-500/10 border-indigo-500/20"
-          >
-            <RefreshCcw size={18} color="#6366f1" />
-          </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => loadUsers(false)}
+              className="items-center justify-center w-10 h-10 border rounded-2xl bg-[#00F0FF]/10 border-[#00F0FF]/20 active:scale-95"
+            >
+              <RefreshCcw size={16} color={THEME.cyan} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* SEARCH INTERFACE */}
-        <View className="w-full max-w-4xl px-6 mx-auto mt-6 mb-6">
-          <GlassCard className="flex-row items-center gap-3 px-5 border shadow-lg h-14 rounded-2xl bg-white/5 border-white/10 shadow-black/20">
-            <Search size={18} color={THEME.slate} />
+        <View className="w-full max-w-4xl px-4 mx-auto mt-6 mb-6 md:px-6">
+          <GlassCard className="flex-row items-center gap-3 px-5 border shadow-lg h-14 rounded-[20px] bg-white/[0.02] border-white/5 shadow-black/20">
+            <Search size={18} color={THEME.slate} opacity={0.5} />
             <TextInput
               className="flex-1 text-sm font-bold tracking-wide text-white outline-none"
               placeholder="FILTER BY EMAIL OR UUID..."
-              placeholderTextColor="#475569"
+              placeholderTextColor="rgba(255,255,255,0.3)"
               value={search}
               onChangeText={setSearch}
               autoCapitalize="none"
             />
             {search.length > 0 && (
               <TouchableOpacity onPress={() => setSearch('')}>
-                <XCircle size={18} color={THEME.slate} />
+                <XCircle size={18} color={THEME.slate} opacity={0.5} />
               </TouchableOpacity>
             )}
           </GlassCard>
@@ -612,19 +664,22 @@ export default function AdminUsersScreen() {
           )}
           keyExtractor={(item) => item.id}
           renderItem={renderUserCard}
-          contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 150 }}
+          contentContainerStyle={{
+            paddingHorizontal: isMobile ? 16 : 24,
+            paddingBottom: 150,
+          }}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
               onRefresh={() => loadUsers(true)}
-              tintColor="#6366f1"
+              tintColor={THEME.cyan}
             />
           }
           ListEmptyComponent={
             <View className="items-center justify-center py-20 opacity-30">
               <ShieldAlert size={48} color="#fff" />
-              <Text className="mt-4 text-xs font-black text-white uppercase tracking-[4px]">
+              <Text className="mt-4 text-[10px] md:text-xs font-black text-white uppercase tracking-[4px]">
                 No Matching Profiles
               </Text>
             </View>
@@ -634,67 +689,49 @@ export default function AdminUsersScreen() {
 
       {/* ════════ 4. ADMIN MODALS ════════ */}
 
-      {/* ACCESS MODAL (ROLE & TIER) */}
+      {/* ACCESS MODAL */}
       <Modal visible={roleModalVisible} transparent animationType="slide">
-        <View className="items-center justify-center flex-1 p-6 bg-[#01111f]/90">
-          <GlassCard className="w-full max-w-md p-8 border bg-[#0a0f1c] border-white/10 rounded-[40px] shadow-2xl shadow-black">
-            <View className="items-center mb-6">
-              <View className="items-center justify-center w-16 h-16 mb-4 border rounded-3xl bg-indigo-500/10 border-indigo-500/20">
-                <Shield size={32} color="#6366f1" />
+        <View className="items-center justify-center flex-1 p-6 bg-[#000012]/90">
+          <GlassCard className="w-full max-w-md p-8 border bg-[#050A15] border-[#00F0FF]/20 rounded-[40px] shadow-2xl shadow-cyan-900/20">
+            <View className="items-center mb-8">
+              <View className="items-center justify-center w-16 h-16 mb-4 border rounded-3xl bg-[#00F0FF]/10 border-[#00F0FF]/20">
+                <Shield size={32} color={THEME.cyan} />
               </View>
               <Text className="text-xl font-black tracking-widest text-center text-white uppercase">
                 Modify Identity
               </Text>
-              <Text className="mt-2 text-[10px] text-slate-500 text-center uppercase tracking-widest leading-4">
+              <Text className="mt-2 text-[10px] text-white/50 text-center uppercase tracking-widest leading-4">
                 {selectedUser?.email}
               </Text>
             </View>
 
-            <Text className="mb-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">
+            <Text className="mb-3 text-[10px] font-black text-white/40 uppercase tracking-widest text-center">
               System Role
             </Text>
-            <View className="flex-row flex-wrap gap-2 mb-6">
+            <View className="flex-row flex-wrap justify-center gap-3 mb-8">
               {['member', 'premium', 'support', 'admin'].map((role) => (
                 <TouchableOpacity
                   key={`role-${role}`}
-                  onPress={() => handleRoleTierUpdate('role', role)}
+                  onPress={() => handleRoleUpdate(role)}
                   className={cn(
-                    'px-4 py-2.5 border rounded-xl flex-row items-center gap-2',
+                    'px-4 py-3 border rounded-xl flex-row items-center gap-2 transition-all',
                     selectedUser?.role === role
-                      ? 'bg-indigo-500/10 border-indigo-500/40'
-                      : 'bg-white/5 border-white/10 hover:bg-white/10',
+                      ? 'bg-[#00F0FF]/10 border-[#00F0FF]/40'
+                      : 'bg-white/[0.02] border-white/10 hover:bg-white/10',
                   )}
                 >
-                  <Text className="text-[10px] font-black tracking-widest text-white uppercase">
+                  <Text
+                    className={cn(
+                      'text-[10px] font-black tracking-widest uppercase',
+                      selectedUser?.role === role
+                        ? 'text-[#00F0FF]'
+                        : 'text-white/60',
+                    )}
+                  >
                     {role}
                   </Text>
                   {selectedUser?.role === role && (
-                    <CheckCircle size={12} color="#6366f1" />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <Text className="mb-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">
-              Subscription Tier
-            </Text>
-            <View className="flex-row flex-wrap gap-2 mb-6">
-              {['free', 'pro', 'enterprise'].map((tier) => (
-                <TouchableOpacity
-                  key={`tier-${tier}`}
-                  onPress={() => handleRoleTierUpdate('tier', tier)}
-                  className={cn(
-                    'px-4 py-2.5 border rounded-xl flex-row items-center gap-2',
-                    selectedUser?.tier === tier
-                      ? 'bg-emerald-500/10 border-emerald-500/40'
-                      : 'bg-white/5 border-white/10 hover:bg-white/10',
-                  )}
-                >
-                  <Text className="text-[10px] font-black tracking-widest text-white uppercase">
-                    {tier}
-                  </Text>
-                  {selectedUser?.tier === tier && (
-                    <CheckCircle size={12} color="#10b981" />
+                    <CheckCircle2 size={12} color={THEME.cyan} />
                   )}
                 </TouchableOpacity>
               ))}
@@ -704,7 +741,7 @@ export default function AdminUsersScreen() {
               onPress={() => setRoleModalVisible(false)}
               className="py-4 mt-2"
             >
-              <Text className="text-center font-black text-slate-500 uppercase tracking-[4px] text-[10px]">
+              <Text className="text-center font-black text-white/30 uppercase tracking-[4px] text-[10px]">
                 Close Panel
               </Text>
             </TouchableOpacity>
@@ -712,11 +749,11 @@ export default function AdminUsersScreen() {
         </View>
       </Modal>
 
-      {/* BAN MODAL */}
+      {/* BAN MODAL WITH CUSTOM DAYS */}
       <Modal visible={banModalVisible} transparent animationType="fade">
-        <View className="items-center justify-center flex-1 p-6 bg-[#01111f]/95">
-          <GlassCard className="w-full max-w-sm p-8 border bg-[#0a0f1c] border-white/10 rounded-[40px] shadow-2xl shadow-black">
-            <View className="items-center mb-8">
+        <View className="items-center justify-center flex-1 p-6 bg-[#000012]/95">
+          <GlassCard className="w-full max-w-sm p-8 border bg-[#050A15] border-white/10 rounded-[40px] shadow-2xl shadow-black">
+            <View className="items-center mb-6">
               <ShieldAlert size={40} color={THEME.warning} />
               <Text className="mt-4 text-xl font-black tracking-widest text-white uppercase">
                 Restrict PID
@@ -725,39 +762,59 @@ export default function AdminUsersScreen() {
 
             <TouchableOpacity
               onPress={() => executeBan(1)}
-              className="flex-row items-center gap-4 p-5 mb-3 border bg-white/5 border-white/10 rounded-2xl hover:bg-white/10"
+              className="flex-row items-center gap-4 p-5 mb-3 border bg-white/[0.02] border-white/10 rounded-2xl hover:bg-white/10"
             >
-              <Clock size={18} color="#94a3b8" />
-              <Text className="text-xs font-bold tracking-widest text-white uppercase">
+              <Clock size={18} color="#94a3b8" opacity={0.5} />
+              <Text className="text-[10px] md:text-xs font-bold tracking-widest text-white/80 uppercase">
                 24H TIMEOUT
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               onPress={() => executeBan(7)}
-              className="flex-row items-center gap-4 p-5 mb-3 border bg-white/5 border-white/10 rounded-2xl hover:bg-white/10"
+              className="flex-row items-center gap-4 p-5 mb-3 border bg-white/[0.02] border-white/10 rounded-2xl hover:bg-white/10"
             >
-              <Calendar size={18} color="#94a3b8" />
-              <Text className="text-xs font-bold tracking-widest text-white uppercase">
+              <Calendar size={18} color="#94a3b8" opacity={0.5} />
+              <Text className="text-[10px] md:text-xs font-bold tracking-widest text-white/80 uppercase">
                 7 DAY SUSPENSION
               </Text>
             </TouchableOpacity>
 
+            {/* Custom Days Input */}
+            <View className="flex-row items-center gap-3 mb-3">
+              <TextInput
+                placeholder="Custom Days"
+                placeholderTextColor="rgba(255,255,255,0.3)"
+                keyboardType="numeric"
+                value={customBanDays}
+                onChangeText={setCustomBanDays}
+                className="flex-1 h-14 px-4 font-mono text-xs text-white border rounded-2xl bg-white/[0.02] border-white/10 focus:border-amber-500"
+              />
+              <TouchableOpacity
+                onPress={() => executeBan(parseInt(customBanDays) || 30)}
+                className="items-center justify-center px-4 border h-14 bg-amber-500/10 border-amber-500/30 rounded-2xl"
+              >
+                <Text className="text-[10px] font-black text-[#F59E0B] uppercase tracking-widest">
+                  APPLY
+                </Text>
+              </TouchableOpacity>
+            </View>
+
             <TouchableOpacity
               onPress={() => executeBan(null)}
-              className="flex-row items-center gap-4 p-5 border bg-rose-500/10 border-rose-500/20 rounded-2xl hover:bg-rose-500/20"
+              className="flex-row items-center gap-4 p-5 mt-2 border bg-[#FF007F]/10 border-[#FF007F]/20 rounded-2xl hover:bg-[#FF007F]/20"
             >
-              <Ban size={18} color="#f43f5e" />
-              <Text className="text-xs font-bold tracking-widest uppercase text-rose-400">
+              <Ban size={18} color={THEME.danger} opacity={0.8} />
+              <Text className="text-[10px] md:text-xs font-bold tracking-widest uppercase text-[#FF007F]">
                 PERMANENT LOCK
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               onPress={() => setBanModalVisible(false)}
-              className="mt-6"
+              className="py-4 mt-6"
             >
-              <Text className="text-center font-black text-slate-500 uppercase tracking-[4px] text-[10px]">
+              <Text className="text-center font-black text-white/30 uppercase tracking-[4px] text-[10px]">
                 Abort
               </Text>
             </TouchableOpacity>
@@ -767,14 +824,14 @@ export default function AdminUsersScreen() {
 
       {/* PURGE MODAL */}
       <Modal visible={deleteModalVisible} transparent animationType="slide">
-        <View className="items-center justify-center flex-1 p-6 bg-[#01111f]/95">
-          <GlassCard className="w-full max-w-sm p-10 border bg-[#0a0f1c] border-rose-500/20 rounded-[50px] shadow-2xl shadow-rose-900/20">
+        <View className="items-center justify-center flex-1 p-6 bg-[#000012]/95">
+          <GlassCard className="w-full max-w-sm p-10 border bg-[#050A15] border-[#FF007F]/20 rounded-[50px] shadow-2xl shadow-pink-900/20">
             <View className="items-center mb-8">
               <AlertTriangle size={64} color={THEME.danger} />
               <Text className="mt-6 text-2xl font-black tracking-tighter text-center text-white uppercase">
                 Critical Purge
               </Text>
-              <Text className="mt-4 text-xs leading-5 tracking-widest text-center uppercase text-slate-400">
+              <Text className="mt-4 text-[10px] md:text-xs leading-5 tracking-widest text-center uppercase text-white/40">
                 Are you certain? Deleting{' '}
                 <Text className="font-bold text-white">
                   {selectedUser?.email}
@@ -785,9 +842,9 @@ export default function AdminUsersScreen() {
 
             <TouchableOpacity
               onPress={executeDelete}
-              className="py-5 mb-4 border bg-rose-500/10 border-rose-500/30 rounded-3xl hover:bg-rose-500/20"
+              className="py-5 mb-4 border bg-[#FF007F]/10 border-[#FF007F]/30 rounded-3xl hover:bg-[#FF007F]/20 active:scale-95"
             >
-              <Text className="text-xs font-black tracking-widest text-center uppercase text-rose-400">
+              <Text className="text-[10px] md:text-xs font-black tracking-widest text-center uppercase text-[#FF007F]">
                 Execute Purge
               </Text>
             </TouchableOpacity>
@@ -796,7 +853,7 @@ export default function AdminUsersScreen() {
               onPress={() => setDeleteModalVisible(false)}
               className="py-4"
             >
-              <Text className="text-center font-black text-slate-500 uppercase tracking-[4px] text-[10px]">
+              <Text className="text-center font-black text-white/30 uppercase tracking-[4px] text-[10px]">
                 Cancel Transaction
               </Text>
             </TouchableOpacity>

@@ -582,7 +582,7 @@ export default function ProfileSettingsScreen() {
             <View className="items-center mt-20 opacity-30">
               <View className="h-[1px] w-12 bg-white/20 mb-4" />
               <Text className="text-[9px] font-mono tracking-[6px] text-white uppercase">
-                VertAI PROFILE INTERFACE
+                VerAI PROFILE INTERFACE
               </Text>
             </View>
           </View>

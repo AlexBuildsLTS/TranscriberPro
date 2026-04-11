@@ -1,12 +1,10 @@
 /**
  * app/(dashboard)/index.tsx
- * NorthOS Engine Dashboard
+ * VerAI Dashboard
  * ----------------------------------------------------------------------------
- * FEATURES:
- * 1. NATIVE SVG: Bypasses Metro bundler crashes using react-native-svg.
- * 2. TANSTACK MUTATION: Securely dispatches payloads via useProcessVideo hook.
- * 3. REALTIME DB SYNC: Listens to the `videos` table for live pipeline updates.
- * 4. AMBIENT ORBS: Perfect circle geometry to prevent edge-clipping glitches, with slow drift.
+ * NATIVE SVG: Bypasses Metro bundler crashes using react-native-svg.
+ * TANSTACK MUTATION: Securely dispatches payloads via useProcessVideo hook.
+ * REALTIME DB SYNC: Listens to the `videos` table for live pipeline updates.
  */
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -528,7 +526,12 @@ export default function DashboardScreen() {
                               key={lang}
                               onPress={() => setSelectedLanguage(lang)}
                               disabled={effectivelyLoading}
-                              hitSlop={{ top: 10, bottom: 10, left: 5, right: 5 }}
+                              hitSlop={{
+                                top: 10,
+                                bottom: 10,
+                                left: 5,
+                                right: 5,
+                              }}
                               className={`px-5 py-2.5 rounded-xl border transition-colors ${
                                 active
                                   ? 'bg-blue-500/20 border-blue-500/50'

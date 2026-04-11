@@ -1,6 +1,6 @@
 /**
  * app/(dashboard)/settings/billing.tsx
- * NorthOS — Resource Allocation & Token Economy
+ * VertAI — Resource Allocation & Token Economy
  * ══════════════════════════════════════════════════════════════════════════════
  * PROTOCOL:
  * 1. TRIPLE-FLEX ARCHITECTURE: SafetyView -> Keyboard -> Scroll flex mapping.
@@ -435,9 +435,7 @@ export default function BillingScreen() {
             {/* SYSTEM FOOTER */}
             <View style={styles.systemManifest}>
               <History size={16} color="rgba(255,255,255,0.15)" />
-              <Text style={styles.manifestText}>
-                NORTHOS RESOURCE ENGINE V16.0.0
-              </Text>
+              <Text style={styles.manifestText}>VertAI ENGINE</Text>
             </View>
           </View>
         </ScrollView>
