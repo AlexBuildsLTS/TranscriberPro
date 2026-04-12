@@ -86,3 +86,41 @@ export function parseVideoUrl(url: string): ParsedVideo {
     normalizedUrl: null,
   };
 }
+
+// ─── TITLE FETCHER ──────────────────────────────────────────────────────────
+
+/**
+ * Fetches the official video title from supported platforms using open oEmbed APIs.
+ * Safe to run on both Web and Mobile.
+ */
+export async function fetchVideoTitle(url: string): Promise<string> {
+  try {
+    // 1. Check YouTube
+    if (url.includes('youtube.com') || url.includes('youtu.be')) {
+      const res = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`);
+      if (res.ok) {
+        const data = await res.json();
+        return data.title;
+      }
+    }
+    // 2. Check Vimeo
+    else if (url.includes('vimeo.com')) {
+      const res = await fetch(`https://vimeo.com/api/oembed.json?url=${encodeURIComponent(url)}`);
+      if (res.ok) {
+        const data = await res.json();
+        return data.title;
+      }
+    }
+    // 3. Check Patreon
+    else if (url.includes('patreon.com')) {
+      // Patreon has no public oEmbed without auth tokens. 
+      // We provide a clean default title instead of failing.
+      return 'Patreon Exclusive Content';
+    }
+  } catch (error) {
+    console.warn('[VideoParser] Failed to fetch video title:', error);
+  }
+
+  // Ultimate Fallback if API fails or network drops
+  return 'Transcribed Media Payload';
+}

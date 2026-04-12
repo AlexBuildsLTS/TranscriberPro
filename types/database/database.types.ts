@@ -127,7 +127,6 @@ export type Database = {
           id: string
           role: Database["public"]["Enums"]["user_role"]
           status: string | null
-          tier: Database["public"]["Enums"]["user_tier"]
           tokens_balance: number
           updated_at: string
         }
@@ -143,7 +142,6 @@ export type Database = {
           id: string
           role?: Database["public"]["Enums"]["user_role"]
           status?: string | null
-          tier?: Database["public"]["Enums"]["user_tier"]
           tokens_balance?: number
           updated_at?: string
         }
@@ -159,7 +157,6 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["user_role"]
           status?: string | null
-          tier?: Database["public"]["Enums"]["user_tier"]
           tokens_balance?: number
           updated_at?: string
         }
@@ -405,7 +402,6 @@ export type Database = {
     }
     Enums: {
       user_role: "member" | "premium" | "support" | "admin"
-      user_tier: "free" | "pro" | "enterprise"
       video_status:
       | "idle"
       | "queued"
@@ -542,7 +538,6 @@ export const Constants = {
   public: {
     Enums: {
       user_role: ["member", "premium", "support", "admin"],
-      user_tier: ["free", "pro", "enterprise"],
       video_status: [
         "idle",
         "queued",

@@ -17,7 +17,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import * as Crypto from 'expo-crypto'; // UNIVERSAL: Works on Web, iOS, and Android
 import { supabase } from '../../lib/supabase/client';
 import { useVideoStore } from '../../store/useVideoStore';
-import { parseVideoUrl } from '../../utils/videoParser';
+import { parseVideoUrl, fetchVideoTitle } from '../../utils/videoParser';
 import { fetchClientCaptions } from '../../utils/clientCaptions';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL as string;
@@ -100,7 +100,10 @@ export const useProcessVideo = () => {
                     return { success: false, errorMsg: 'UNAUTHORIZED: Session required.' };
                 }
 
-                // ── 3. DB ROW INITIALISATION ───────────────────────────────────────
+                // ── 3. FETCH THE ACTUAL VIDEO TITLE ───────────────────────────────
+                const officialTitle = await fetchVideoTitle(parsed.normalizedUrl);
+
+                // ── 4. DB ROW INITIALISATION ───────────────────────────────────────
                 // UNIVERSAL UUID: Automatically routes to Web Crypto or Native Enclave
                 const videoUuid = Crypto.randomUUID();
                 activeUuid = videoUuid;
@@ -110,6 +113,7 @@ export const useProcessVideo = () => {
                     user_id: session.user.id,
                     youtube_url: parsed.normalizedUrl,
                     youtube_video_id: parsed.videoId,
+                    title: officialTitle, // <--- Title injected securely here!
                     platform: parsed.platform,
                     status: 'queued',
                 });
@@ -124,7 +128,7 @@ export const useProcessVideo = () => {
                 // Activate polling/realtime
                 setActiveVideoId(videoUuid);
 
-                // ── 4. CLIENT CAPTION FAST-PATH (quality-gated) ───────────────────
+                // ── 5. CLIENT CAPTION FAST-PATH (quality-gated) ───────────────────
                 let clientTranscript: string | null = null;
 
                 try {
@@ -139,7 +143,7 @@ export const useProcessVideo = () => {
                     // Silent: CORS block on web or network error. Edge handles it gracefully.
                 }
 
-                // ── 5. EDGE FUNCTION DISPATCH ──────────────────────────────────────
+                // ── 6. EDGE FUNCTION DISPATCH ──────────────────────────────────────
                 const response = await fetch(
                     `${SUPABASE_URL}/functions/v1/process-video`,
                     {

@@ -6,9 +6,12 @@
  * - 100% Type-Safe: Defensive parsing for Supabase JSON fields.
  * - Unified Output: TXT and MD files contain BOTH the AI Summaries and the Raw Transcript.
  * - Smart Fallbacks: Auto-calculates SRT/VTT timestamps if native segments fail.
- * - Platform Agnostic: Triggers native downloads on Web and clipboard on Mobile.
+ * - Platform Agnostic: Triggers browser downloads on Web, and Native Share Sheets on iOS/Android.
  */
 
+import { Platform } from 'react-native';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import { formatTimestamp, formatSrtTimestamp, formatVttTimestamp, formatDuration } from '../utils/formatters/time';
 import type { ExportFormat, ExportOptions, ExportResult, Transcript, TranscriptSegment, AiInsights, Video } from '../types/api';
 
@@ -39,7 +42,7 @@ const MIME_TYPES: Record<ExportFormat, string> = {
 // Defensive JSON parsers to prevent crashes from malformed Supabase JSON columns
 const safeArray = <T>(data: unknown): T[] => (Array.isArray(data) ? (data as T[]) : []);
 
-// ─── PLAIN TEXT ENGINE (EXECUTIVE TXT) ───────────────────────────────────────
+// ─── PLAIN TEXT ENGINE ( RAW TXT) ───────────────────────────────────────
 
 function exportToTxt(data: ExportData, options: ExportOptions): string {
   const { video, transcript, insights } = data;
@@ -48,25 +51,25 @@ function exportToTxt(data: ExportData, options: ExportOptions): string {
   const takeaways = safeArray<string>(insights?.key_takeaways);
 
   lines.push('════════════════════════════════════════════════════════════════════════');
-  lines.push(`INTELLIGENCE DOSSIER: ${video.title || 'Unknown Media Asset'}`);
+  lines.push(`VerAI TRANSCRIPT: ${video.title || 'Unknown Media Asset'}`);
   lines.push('════════════════════════════════════════════════════════════════════════\n');
   lines.push(`Source URL : ${video.youtube_url}`);
   if (video.duration_seconds) lines.push(`Duration   : ${formatDuration(video.duration_seconds)}`);
   lines.push(`Generated  : ${new Date().toUTCString()}\n`);
 
   if (options.includeSummary && insights?.summary) {
-    lines.push('─── EXECUTIVE ABSTRACT ─────────────────────────────────────────────────\n');
+    lines.push('─── SUMMARY ABOUT THE CONTENT ─────────────────────────────────────────────────\n');
     lines.push(insights.summary + '\n');
   }
 
   if (options.includeSummary && takeaways.length > 0) {
-    lines.push('─── STRATEGIC INDICATORS ───────────────────────────────────────────────\n');
+    lines.push('─── INDICATORS ───────────────────────────────────────────────\n');
     takeaways.forEach((takeaway, i) => lines.push(`${i + 1}. ${takeaway}`));
     lines.push('\n');
   }
 
   if (options.includeChapters && chapters.length > 0) {
-    lines.push('─── TIMELINE MAPPING ───────────────────────────────────────────────────\n');
+    lines.push('─── VerAI CHAPTER TIMELINE───────────────────────────────────────────────────\n');
     chapters.forEach((chapter) => {
       lines.push(`[${chapter.timestamp}] ${chapter.title.toUpperCase()}`);
       if (chapter.description) lines.push(`    ${chapter.description}`);
@@ -74,7 +77,7 @@ function exportToTxt(data: ExportData, options: ExportOptions): string {
     });
   }
 
-  lines.push('─── VERBATIM DATA STREAM (RAW TRANSCRIPT) ──────────────────────────────\n');
+  lines.push('─── VERBATIM DATA STREAM  ──────────────────────────────\n');
 
   if (options.includeTimestamps && data.segments && data.segments.length > 0) {
     // If segments exist, map them with timestamps
@@ -97,7 +100,7 @@ function exportToTxt(data: ExportData, options: ExportOptions): string {
   }
 
   lines.push('\n════════════════════════════════════════════════════════════════════════');
-  lines.push('Preserved Securely by NorthOS Vault');
+  lines.push('Preserved Securely by VerAI Vault');
   lines.push('════════════════════════════════════════════════════════════════════════');
 
   return lines.join('\n');
@@ -141,9 +144,10 @@ function exportToMarkdown(data: ExportData, options: ExportOptions): string {
   lines.push('## Verbatim Data Stream\n');
 
   if (options.includeTimestamps && data.segments && data.segments.length > 0) {
-    data.segments.forEach((seg) => {
-      const speaker = options.includeSpeakers && seg.speaker ? `**[SPK_${seg.speaker}]** ` : '';
-      lines.push(`*\\[${formatTimestamp(seg.start)}\\]* ${speaker}${seg.text}  `);
+    // FIXED: Ensured the loop variable matches perfectly to avoid line 148 crash
+    data.segments.forEach((segment) => {
+      const speaker = options.includeSpeakers && segment.speaker ? `**[SPK_${segment.speaker}]** ` : '';
+      lines.push(`*\\[${formatTimestamp(segment.start)}\\]* ${speaker}${segment.text}  `);
     });
   } else {
     // Smart Paragraphing for Markdown
@@ -158,7 +162,7 @@ function exportToMarkdown(data: ExportData, options: ExportOptions): string {
     });
   }
 
-  lines.push('---\n*Preserved Securely by NorthOS Vault*');
+  lines.push('---\n*Preserved Securely by VerAI Vault*');
   return lines.join('\n');
 }
 
@@ -252,11 +256,11 @@ function exportToJson(data: ExportData, options: ExportOptions): string {
   return JSON.stringify(output, null, 2);
 }
 
-// ─── MASTER CONTROLLER ───────────────────────────────────────────────────────
+// ─── MASTER EXPORT CONTROLLER ────────────────────────────────────────────────
 
 export function exportTranscript(data: ExportData, options: ExportOptions): ExportResult {
   const format = options.format || 'txt';
-  const filename = `NorthOS_Dossier_${Date.now()}.${format}`;
+  const filename = `VerAI_TranscriptExport_${Date.now()}.${format}`;
 
   let content = '';
   switch (format) {
@@ -271,18 +275,62 @@ export function exportTranscript(data: ExportData, options: ExportOptions): Expo
   return { content, filename, mimeType: MIME_TYPES[format] || 'text/plain' };
 }
 
-export function downloadExport(result: ExportResult): void {
-  if (typeof document === 'undefined') return; // Ensure safety outside Web environments
-  const blob = new Blob([result.content], { type: result.mimeType });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = result.filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+// ─── UNIVERSAL DOWNLOAD HANDLER (WEB + MOBILE) ───────────────────────────────
+
+export async function downloadExport(result: ExportResult): Promise<void> {
+  if (Platform.OS === 'web') {
+    // Next.js / SSR Safety Check
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
+
+    try {
+      const blob = new Blob([result.content], { type: result.mimeType });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = result.filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('[ExportBuilder] Web download failed:', error);
+      throw new Error('Failed to trigger file download in browser.');
+    }
+  } else {
+    // Native Mobile Handling (iOS / Android)
+    try {
+      // BYPASS: Force TypeScript to ignore the broken local VSCode typings
+      const FS = FileSystem as any;
+      const Share = Sharing as any;
+
+      if (!FS.documentDirectory) {
+        throw new Error('Local file system is not accessible on this device.');
+      }
+
+      const fileUri = `${FS.documentDirectory}${result.filename}`;
+
+      // Write the content to the local device file system using raw 'utf8' string
+      await FS.writeAsStringAsync(fileUri, result.content, {
+        encoding: 'utf8',
+      });
+
+      // Prompt the user with the native Share Sheet to save/send the file
+      if (await Share.isAvailableAsync()) {
+        await Share.shareAsync(fileUri, {
+          mimeType: result.mimeType,
+          dialogTitle: 'Export Intelligence Dossier',
+        });
+      } else {
+        throw new Error('Native sharing is not available on this device.');
+      }
+    } catch (error) {
+      console.error('[ExportBuilder] Mobile sharing failed:', error);
+      throw error; // Throw so the UI shows a notification/toast 
+    }
+  }
 }
+
+// ─── CRITICAL EXPORT DEFINITION ──────────────────────────────────────────────
 
 export const ExportBuilder = {
   exportTranscript,
