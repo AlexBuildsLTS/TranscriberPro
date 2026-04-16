@@ -399,7 +399,7 @@ export default function SecuritySettingsScreen() {
             {/* 1. Return Button (Locked to left edge, vertically centered to image) */}
             <TouchableOpacity
               onPress={() =>
-                router.canGoBack() ? router.back() : router.replace('settings/')
+                router.canGoBack() ? router.back() : router.replace('/settings')
               }
               className="absolute left-0 z-50 flex-row items-center gap-x-2 active:scale-95"
               style={{ top: 26 }}

@@ -99,7 +99,7 @@ export function parseTimestamp(timestamp: string): number {
   if (!timestamp || typeof timestamp !== 'string') return 0;
 
   const parts = timestamp.split(':').map((p) => parseFloat(p.replace(',', '.')));
-  
+
   if (parts.some((p) => !Number.isFinite(p))) return 0;
 
   if (parts.length === 3) {

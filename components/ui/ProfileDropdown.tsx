@@ -10,6 +10,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Platform, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../store/useAuthStore';
+import { Terminal, LifeBuoy, Wrench, LogOut } from 'lucide-react-native';
 
 // ─── UTILITIES ───────────────────────────────────────────────────────────────
 
@@ -31,9 +32,17 @@ const getRoleConfig = (role?: string) => {
       return {
         label: 'ADMIN',
         bg: 'rgba(255,51,102,0.15)',
-        text: '#FF3366',
-        border: 'rgba(255,51,102,0.3)',
-        shadow: '#FF3366',
+        text: '#01754d',
+        border: 'rgba(133, 4, 36,0.3)',
+        shadow: '#30010d',
+      };
+    case 'support':
+      return {
+        label: 'SUPPORT',
+        bg: 'rgba(50,27,90,0.15)',
+        text: '#01754d',
+        border: 'rgba(255,255,0,0.3)',
+        shadow: '#260026',
       };
     case 'premium':
       return {
@@ -209,11 +218,11 @@ export const ProfileDropdown = () => {
                   onPress={() => handleNavigate('/admin')}
                   activeOpacity={0.7}
                   className="flex-row items-center p-3 rounded-xl"
-                  style={{ backgroundColor: 'rgba(255,51,102,0.05)' }}
+                  style={{ backgroundColor: 'rgba(4,207,159,0.15)' }}
                 >
                   <Text
                     style={{
-                      color: '#FF3366',
+                      color: '#04cf9f',
                       fontSize: 11,
                       fontWeight: '800',
                       letterSpacing: 1,
@@ -221,6 +230,7 @@ export const ProfileDropdown = () => {
                   >
                     🛡️ ADMIN
                   </Text>
+                    <Terminal size={14} color="#04cf9f" style={{ marginLeft: 8 }} /> 
                 </TouchableOpacity>
               )}
 
@@ -239,6 +249,34 @@ export const ProfileDropdown = () => {
                 >
                   ⚙️ SETTINGS
                 </Text>
+                < Wrench size={14} color="rgba(255,255,255,0.8)" style={{ marginLeft: 8 }} />
+              </TouchableOpacity>
+
+              <View
+                style={{
+                  height: 1,
+                  backgroundColor: 'rgba(255,255,255,0.05)',
+                  marginVertical: 4,
+                }}
+              />    
+              <TouchableOpacity
+                onPress={() => handleNavigate('/settings/support')}
+                activeOpacity={0.7}
+                className="flex-row items-center p-3 rounded-xl"
+              >
+                <Text
+                  style={{
+                    color: 'rgba(255,255,255,0.8)',
+                    fontSize: 11,
+                    fontWeight: '700',
+                    letterSpacing: 1,
+                  }}
+                >
+               
+                  
+                  ✉️ SUPPORT
+                </Text>
+                <LifeBuoy size={14} color="rgba(255,255,255,0.8)" style={{ marginLeft: 8 }} />
               </TouchableOpacity>
 
               <View
@@ -253,17 +291,20 @@ export const ProfileDropdown = () => {
                 onPress={handleSignOut}
                 activeOpacity={0.7}
                 className="flex-row items-center p-3 rounded-xl"
+                style={{ backgroundColor: 'rgba(255,51,102,0.05)' }}
               >
                 <Text
                   style={{
-                    color: 'rgba(255,255,255,0.4)',
+                    color: '#FF3366',
                     fontSize: 11,
-                    fontWeight: '700',
-                    letterSpacing: 1,
+                    fontWeight: '800',
+                    letterSpacing: 2,
+                    textAlign: 'center',
                   }}
                 >
                   SIGN OUT
                 </Text>
+                <LogOut size={14} color="#FF3366" style={{ marginLeft: 8 }} />
               </TouchableOpacity>
             </View>
           </View>
