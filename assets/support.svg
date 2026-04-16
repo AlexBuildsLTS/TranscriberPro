@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <style>
+      /* Base Animation Configurations */
+      .teal-group {
+        animation: floatBubble 3s ease-in-out infinite;
+        transform-origin: 350px 206px;
+      }
+      
+      .spark {
+        transform-origin: center;
+        animation: pulseSpark 1.5s ease-in-out infinite;
+      }
+      .spark-1 { animation-delay: 0s; }
+      .spark-2 { animation-delay: 0.2s; }
+      .spark-3 { animation-delay: 0.4s; }
+
+      .line {
+        animation: typeFade 2.5s ease-in-out infinite;
+      }
+      .line-1 { animation-delay: 0s; }
+      .line-2 { animation-delay: 0.4s; }
+      .line-3 { animation-delay: 0.8s; }
+
+      /* Keyframes */
+      @keyframes floatBubble {
+        0%, 100% { transform: translateY(0px) rotate(0deg); }
+        50% { transform: translateY(-12px) rotate(2deg); }
+      }
+
+      @keyframes pulseSpark {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.15) translate(-2px, -2px); opacity: 0.5; }
+      }
+
+      @keyframes typeFade {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.4; }
+      }
+    </style>
+    
+    <clipPath id="yellow-bubble-clip">
+      <path d="M 80,210 L 290,210 A 16,16 0 0 1 306,226 L 306,370 A 16,16 0 0 1 290,386 L 220,386 L 160,430 L 140,386 L 80,386 A 16,16 0 0 1 64,370 L 64,226 A 16,16 0 0 1 80,210 Z" />
+    </clipPath>
+  </defs>
+
+  <g class="sparks" stroke="#FF5750" stroke-width="24" stroke-linecap="round">
+    <path class="spark spark-1" d="M 230,110 L 245,135" />
+    <path class="spark spark-2" d="M 160,150 L 185,165" />
+    <path class="spark spark-3" d="M 135,225 L 160,215" />
+  </g>
+
+  <g>
+    <path d="M 80,210 L 290,210 A 16,16 0 0 1 306,226 L 306,370 A 16,16 0 0 1 290,386 L 220,386 L 160,430 L 140,386 L 80,386 A 16,16 0 0 1 64,370 L 64,226 A 16,16 0 0 1 80,210 Z" fill="#FEC641" />
+    
+    <polygon points="180,210 306,210 306,360" fill="#F79B0A" clip-path="url(#yellow-bubble-clip)" />
+    
+    <path d="M 80,210 L 290,210 A 16,16 0 0 1 306,226 L 306,370 A 16,16 0 0 1 290,386 L 220,386 L 160,430 L 140,386 L 80,386 A 16,16 0 0 1 64,370 L 64,226 A 16,16 0 0 1 80,210 Z" fill="none" stroke="#0E2971" stroke-width="24" stroke-linejoin="round" />
+  </g>
+
+  <g stroke="#FFFFFF" stroke-width="24" stroke-linecap="round">
+    <path class="line line-1" d="M 140,265 L 190,265" />
+    <path class="line line-2" d="M 110,315 L 260,315" />
+    <path class="line line-3" d="M 140,365 L 210,365" />
+  </g>
+
+  <g class="teal-group">
+    <path d="M 350,80 C 420,80 476,136 476,206 C 476,230 468,252 454,270 L 480,310 L 430,300 C 408,320 380,332 350,332 C 280,332 224,276 224,206 C 224,136 280,80 350,80 Z" fill="#64CFD5" stroke="#0E2971" stroke-width="24" stroke-linejoin="round" />
+    
+    <circle cx="340" cy="150" r="14" fill="#FFFFFF" />
+    <path d="M 320,205 C 320,185 360,185 360,205 C 360,215 370,225 370,235 C 370,255 310,255 310,235 C 310,225 320,215 320,205 Z" fill="#FFFFFF" />
+  </g>
+</svg>

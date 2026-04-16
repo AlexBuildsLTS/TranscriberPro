@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <style>
+      /* Background Rope Pulse */
+      .rope-bg {
+        transform-origin: 256px 256px;
+        animation: pulseRope 3s ease-in-out infinite;
+      }
+
+      /* Main Buoy Rocking */
+      .buoy-group {
+        transform-origin: 256px 256px;
+        animation: rockBuoy 3s ease-in-out infinite;
+      }
+
+      @keyframes pulseRope {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.04); }
+      }
+
+      @keyframes rockBuoy {
+        0%, 100% { transform: rotate(-6deg); }
+        50% { transform: rotate(6deg); }
+      }
+    </style>
+
+    <mask id="donut-mask">
+      <circle cx="256" cy="256" r="180" fill="white" />
+      <circle cx="256" cy="256" r="85" fill="black" />
+    </mask>
+  </defs>
+
+  <path class="rope-bg" d="M 80 80 Q 256 20 432 80 Q 492 256 432 432 Q 256 492 80 432 Q 20 256 80 80 Z" fill="none" stroke="#FF8CAE" stroke-width="32" stroke-linecap="round" stroke-linejoin="round" />
+
+  <g class="buoy-group">
+    
+    <g mask="url(#donut-mask)">
+      <circle cx="256" cy="256" r="180" fill="#E95B8C" />
+      
+      <polygon points="0,512 512,512 512,0" fill="#C53765" />
+
+      <polygon points="256,256 136,0 256,0" fill="#FFFFFF" />
+      <polygon points="256,256 256,0 376,0" fill="#D0DDFF" />
+
+      <polygon points="256,256 136,512 256,512" fill="#FFFFFF" />
+      <polygon points="256,256 256,512 376,512" fill="#D0DDFF" />
+
+      <polygon points="256,256 0,136 0,256" fill="#FFFFFF" />
+      <polygon points="256,256 0,256 0,376" fill="#D0DDFF" />
+
+      <polygon points="256,256 512,136 512,256" fill="#FFFFFF" />
+      <polygon points="256,256 512,256 512,376" fill="#D0DDFF" />
+
+      <g stroke="#0C2D7B" stroke-width="24" stroke-linecap="square">
+        <line x1="256" y1="256" x2="136" y2="0" />
+        <line x1="256" y1="256" x2="376" y2="0" />
+        <line x1="256" y1="256" x2="136" y2="512" />
+        <line x1="256" y1="256" x2="376" y2="512" />
+        <line x1="256" y1="256" x2="0" y2="136" />
+        <line x1="256" y1="256" x2="0" y2="376" />
+        <line x1="256" y1="256" x2="512" y2="136" />
+        <line x1="256" y1="256" x2="512" y2="376" />
+      </g>
+    </g>
+
+    <circle cx="256" cy="256" r="180" fill="none" stroke="#0C2D7B" stroke-width="24" />
+    <circle cx="256" cy="256" r="85" fill="none" stroke="#0C2D7B" stroke-width="24" />
+
+    <g fill="#FFCA3A" stroke="#FFCA3A" stroke-linecap="round">
+      <line x1="256" y1="195" x2="256" y2="265" stroke-width="20" />
+      <circle cx="256" cy="300" r="10" stroke-width="0" />
+    </g>
+    
+  </g>
+</svg>

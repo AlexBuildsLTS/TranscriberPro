@@ -485,8 +485,7 @@ export default function ProfileSettingsScreen() {
                       disabled={isUploading}
                       style={styles.actionButton}
                       activeOpacity={0.7}
-                    >
-                      {isUploading ? (
+                    >{isUploading ? (
                         <Text style={styles.actionTextTransferring}>
                           Transferring...
                         </Text>
@@ -499,30 +498,18 @@ export default function ProfileSettingsScreen() {
                             alignItems: 'center',
                             gap: 8,
                           }}
-                        >
-                          <Upload size={16} color="#00F0FF" />
-                          <Text style={styles.actionTextUpload}>
+                        ><Upload size={16} color="#00F0FF" /><Text style={styles.actionTextUpload}>
                             UPDATE AVATAR
-                          </Text>
-                        </View>
-                      )}
-                    </TouchableOpacity>
-
-                    {avatarUrl && !isUploading && (
+                          </Text></View>
+                      )}</TouchableOpacity>{avatarUrl && !isUploading && (
                       <View
                         style={{ flexDirection: 'row', alignItems: 'center' }}
-                      >
-                        <View style={styles.actionDivider} />
-                        <TouchableOpacity
+                      ><View style={styles.actionDivider} /><TouchableOpacity
                           onPress={() => setAvatarUrl('')}
                           style={styles.actionButton}
                           activeOpacity={0.7}
-                        >
-                          <RotateCcw size={20} color="#FF007F" />
-                        </TouchableOpacity>
-                      </View>
-                    )}
-                  </View>
+                        ><RotateCcw size={20} color="#FF007F" /></TouchableOpacity></View>
+                    )}</View>
                 </View>
               </GlassCard>
             </FadeIn>
@@ -532,15 +519,9 @@ export default function ProfileSettingsScreen() {
               <GlassCard className="p-8 mb-8 border-white/5">
                 <View className="gap-y-10">
                   {/* Full name input (FIXED: Precise vertical centering) */}
-                  <View>
-                    <View className="flex-row items-center mb-4 ml-1">
-                      <User size={14} color="#00F0FF" />
-                      <Text className="text-[#00F0FF] font-black text-[10px] tracking-[4px] uppercase ml-3">
+                  <View><View className="flex-row items-center mb-4 ml-1"><User size={14} color="#00F0FF" /><Text className="text-[#00F0FF] font-black text-[10px] tracking-[4px] uppercase ml-3">
                         USERNAME
-                      </Text>
-                    </View>
-                    <View className="h-16 overflow-hidden border bg-black/60 border-white/15 rounded-2xl">
-                      <TextInput
+                      </Text></View><View className="h-16 overflow-hidden border bg-black/60 border-white/15 rounded-2xl"><TextInput
                         value={fullName}
                         onChangeText={setFullName}
                         placeholder="User Name"
@@ -563,25 +544,14 @@ export default function ProfileSettingsScreen() {
                               : {}),
                           } as any
                         }
-                      />
-                    </View>
-                  </View>
+                      /></View></View>
 
                   {/* Email — read only */}
-                  <View>
-                    <View className="flex-row items-center mb-4 ml-1">
-                      <Mail size={14} color="rgba(255,255,255,0.3)" />
-                      <Text className="text-white/30 font-black text-[10px] tracking-[4px] uppercase ml-3">
+                  <View><View className="flex-row items-center mb-4 ml-1"><Mail size={14} color="rgba(255,255,255,0.3)" /><Text className="text-white/30 font-black text-[10px] tracking-[4px] uppercase ml-3">
                         System Email
-                      </Text>
-                    </View>
-                    <View className="flex-row items-center justify-between h-16 px-6 border opacity-50 bg-white/5 border-white/5 rounded-2xl">
-                      <Text className="font-mono text-sm tracking-tight text-white/40">
+                      </Text></View><View className="flex-row items-center justify-between h-16 px-6 border opacity-50 bg-white/5 border-white/5 rounded-2xl"><Text className="font-mono text-sm tracking-tight text-white/40">
                         {user?.email}
-                      </Text>
-                      <Shield size={14} color="rgba(255,255,255,0.1)" />
-                    </View>
-                  </View>
+                      </Text><Shield size={14} color="rgba(255,255,255,0.1)" /></View></View>
                 </View>
 
                 <Button
