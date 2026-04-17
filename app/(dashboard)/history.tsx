@@ -1,11 +1,13 @@
 /**
  * app/(dashboard)/history.tsx
- * VerAI Archive & Vault Dashboard
- * ----------------------------------------------------------------------------
- * MODULE OVERVIEW:
- * AMBIENT ORB ENGINE: Fast, drifting, bouncing background visualizer.
- * NATIVE SVG ANIMATION: Central floating Vault icon with spinning dial.
- * UI Unified padding to prevent mobile stretching, perfect touch tracking.
+ * VeraxAI Archive & Vault Dashboard
+ * ══════════════════════════════════════════════════════════════════════════════
+ * PROTOCOL:
+ * 1. ZERO-BLOCK BACKGROUND: Ambient Engine strictly uses pointerEvents="none".
+ * 2. CALM WAVE ENGINE: Single central emitter anchored directly behind the Vault SVG.
+ * 3. GEOMETRIC PHYSICS: 120fps UI-thread math (useFrameCallback) for seamless, slow drift.
+ * 4. OPTIMIZED LIST: FlatList maintains exact `headerElement` reference to prevent input blur.
+ * ══════════════════════════════════════════════════════════════════════════════
  */
 
 import React, { useCallback, useMemo, useState, useEffect } from 'react';
@@ -21,9 +23,10 @@ import {
   View,
   Dimensions,
   ScrollView,
+  StyleSheet,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import Svg, { Rect, Path, Circle, G, Polygon } from 'react-native-svg';
+import Svg, { Rect, Path, Circle, Polygon, G } from 'react-native-svg';
 import Animated, {
   FadeInDown,
   useAnimatedStyle,
@@ -34,6 +37,7 @@ import Animated, {
   Easing,
   interpolate,
   withDelay,
+  useFrameCallback,
 } from 'react-native-reanimated';
 import {
   AlertTriangle,
@@ -47,10 +51,9 @@ import { useHistoryData } from '../../hooks/queries/useHistoryData';
 import { useDeleteVideo } from '../../hooks/mutations/useDeleteVideo';
 
 const IS_WEB = Platform.OS === 'web';
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-// ─── LIQUID NEON COLOR PALETTE ───
-const DARK_NAVY = '#000012'; // Dark Navy background to replace flat black
+// ─── STRICT LIQUID NEON COLOR PALETTE ───
+const DARK_NAVY = '#000012'; // Master Background
 const CYAN = '#00F0FF';
 const PURPLE = '#8A2BE2';
 const GREEN = '#32FF00';
@@ -78,74 +81,344 @@ const PROCESSING_STATUSES = new Set([
 ]);
 
 // ══════════════════════════════════════════════════════════════════════════════
-// MODULE 1: AMBIENT ORB ENGINE (FASTER & BOUNCING)
+// MODULE 1: CALM SINGLE-WAVE INTERFERENCE ENGINE
 // ══════════════════════════════════════════════════════════════════════════════
-const AmbientOrb = ({
-  color,
-  size,
-  top,
-  left,
-  right,
-  bottom,
-  opacity = 0.09,
-  delay = 0,
-}: {
-  color: string;
-  size: number;
-  top?: number;
-  left?: number;
-  right?: number;
-  bottom?: number;
-  opacity?: number;
-  delay?: number;
-}) => {
-  const { width, height } = Dimensions.get('window');
-  const drift = useSharedValue(0);
+// ⚙️ CUSTOMIZATION GUIDE:
+// - opacity interpolation: [0, 0.3, 0.05, 0] ensures NO BLINKING/POPPING.
+// - duration: Set to 14000ms for a very calm, slow expansion.
 
-  useEffect(() => {
-    // SPEED CONTROL: 4000ms duration for a faster, dynamic drift
-    drift.value = withDelay(
-      delay,
-      withRepeat(
-        withTiming(1, { duration: 4000, easing: Easing.inOut(Easing.sin) }),
+interface RippleProps {
+  color: string;
+  delay: number;
+  duration: number;
+  maxScale: number;
+}
+
+const SingleRipple = React.memo(
+  ({ color, delay, duration, maxScale }: RippleProps) => {
+    const progress = useSharedValue(0);
+
+    useEffect(() => {
+      progress.value = withDelay(
+        delay,
+        withRepeat(
+          withTiming(1, { duration, easing: Easing.out(Easing.sin) }),
+          -1,
+          false, // Instantly resets to 0 to spawn the next ripple seamlessly
+        ),
+      );
+    }, [delay, duration, progress]);
+
+    const animatedStyle = useAnimatedStyle(() => {
+      return {
+        transform: [
+          { scale: interpolate(progress.value, [0, 1], [1, maxScale]) },
+        ],
+        // CRITICAL FIX: Starts at opacity 0 to prevent the sharp visual pop/blink.
+        opacity: interpolate(
+          progress.value,
+          [0, 0.1, 0.6, 1],
+          [0, 0.3, 0.05, 0],
+        ),
+        borderWidth: interpolate(progress.value, [0, 1], [2, 0]),
+      };
+    });
+
+    return (
+      <Animated.View
+        style={[
+          {
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            borderRadius: 9999,
+            borderColor: color,
+            backgroundColor: 'transparent',
+          },
+          animatedStyle,
+        ]}
+      />
+    );
+  },
+);
+SingleRipple.displayName = 'SingleRipple';
+
+interface EmitterProps {
+  centerX: number;
+  centerY: number;
+  coreSize: number;
+  color: string;
+  maxWaveSize: number;
+  waveCount: number;
+  baseDuration: number;
+}
+
+const WaveEmitter = React.memo(
+  ({
+    centerX,
+    centerY,
+    coreSize,
+    color,
+    maxWaveSize,
+    waveCount,
+    baseDuration,
+  }: EmitterProps) => {
+    const stagger = baseDuration / waveCount;
+    const maxScale = maxWaveSize / coreSize;
+
+    // ⚙️ The Breathing Core Pulse
+    // Animates the center ball itself so it glows and pulses naturally
+    const corePulse = useSharedValue(0.4);
+
+    useEffect(() => {
+      corePulse.value = withRepeat(
+        withTiming(1, { duration: 3000, easing: Easing.inOut(Easing.sin) }),
         -1,
         true,
-      ),
-    );
-  }, [delay, drift]);
+      );
+    }, []);
 
-  const anim = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: interpolate(drift.value, [0, 1], [0, width * 0.2]) },
-      { translateY: interpolate(drift.value, [0, 1], [0, height * 0.1]) },
-      { scale: interpolate(drift.value, [0, 1], [0.85, 1.15]) },
-    ],
-  }));
+    const coreStyle = useAnimatedStyle(() => ({
+      opacity: interpolate(corePulse.value, [0.4, 1], [0.3, 0.8]),
+      transform: [
+        { scale: interpolate(corePulse.value, [0.4, 1], [0.85, 1.15]) },
+      ],
+    }));
 
-  return (
-    <Animated.View
-      style={[
-        {
+    return (
+      <View
+        style={{
           position: 'absolute',
-          width: size,
-          height: size,
-          borderRadius: size,
-          backgroundColor: color,
-          opacity,
-          top,
-          left,
-          right,
-          bottom,
-          pointerEvents: 'none', // CRITICAL: Ensures these never block APK touches
-        },
-        anim,
-      ]}
-    />
-  );
-};
+          left: centerX - coreSize / 2,
+          top: centerY - coreSize / 2,
+          width: coreSize,
+          height: coreSize,
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}
+      >
+        {Array.from({ length: waveCount }).map((_, index) => (
+          <SingleRipple
+            key={`ripple-${index}`}
+            color={color}
+            delay={index * stagger}
+            duration={baseDuration}
+            maxScale={maxScale}
+          />
+        ))}
+
+        <Animated.View
+          style={[
+            coreStyle,
+            {
+              width: coreSize,
+              height: coreSize,
+              borderRadius: coreSize / 2,
+              backgroundColor: color,
+              shadowColor: color,
+              shadowRadius: 12,
+              shadowOpacity: 1,
+              shadowOffset: { width: 0, height: 0 },
+              ...(IS_WEB ? ({ boxShadow: `0 0 20px ${color}` } as any) : {}),
+            },
+          ]}
+        />
+      </View>
+    );
+  },
+);
+WaveEmitter.displayName = 'WaveEmitter';
 
 // ══════════════════════════════════════════════════════════════════════════════
-// MODULE 2: NATIVE SVG ANIMATION (THE VAULT)
+// MODULE 2: MICRO-GEOMETRIC PHYSICS ENGINE (Hexagon, Tetrahedron, Diamond)
+// ══════════════════════════════════════════════════════════════════════════════
+
+interface GeometricShapeProps {
+  type: 'hexagon' | 'tetrahedron' | 'diamond';
+  color: string;
+  size: number;
+  initialX: number;
+  initialY: number;
+  velocityX: number;
+  velocityY: number;
+  rotationSpeed: number;
+}
+
+const FloatingShape = React.memo(
+  ({
+    type,
+    color,
+    size,
+    initialX,
+    initialY,
+    velocityX,
+    velocityY,
+    rotationSpeed,
+  }: GeometricShapeProps) => {
+    const { width, height } = Dimensions.get('window');
+
+    const x = useSharedValue(initialX);
+    const y = useSharedValue(initialY);
+    const rot = useSharedValue(0);
+
+    // 120fps UI Thread loop. Ultra-smooth movement with ZERO JS bridge lag.
+    useFrameCallback((frameInfo) => {
+      if (frameInfo.timeSincePreviousFrame === null) return;
+      const dt = frameInfo.timeSincePreviousFrame / 16.66;
+
+      x.value += velocityX * dt;
+      y.value += velocityY * dt;
+      rot.value += rotationSpeed * dt;
+
+      // Smooth Boundary Wrap
+      if (x.value < -size * 2) x.value = width + size;
+      if (x.value > width + size * 2) x.value = -size;
+      if (y.value < -size * 2) y.value = height + size;
+      if (y.value > height + size * 2) y.value = -size;
+    });
+
+    const animatedStyle = useAnimatedStyle(() => {
+      return {
+        transform: [
+          { translateX: x.value },
+          { translateY: y.value },
+          { rotate: `${rot.value}deg` },
+        ],
+      };
+    });
+
+    const renderShape = () => {
+      switch (type) {
+        case 'hexagon':
+          return (
+            <Svg width={size} height={size} viewBox="0 0 100 100" fill="none">
+              <Polygon
+                points="50,5 93,25 93,75 50,95 7,75 7,25"
+                fill={`${color}10`}
+                stroke={color}
+                strokeWidth="1.5"
+                opacity="0.4"
+              />
+            </Svg>
+          );
+        case 'diamond':
+          return (
+            <Svg width={size} height={size} viewBox="0 0 100 100" fill="none">
+              <Polygon
+                points="50,5 95,50 50,95 5,50"
+                fill={`${color}10`}
+                stroke={color}
+                strokeWidth="1.5"
+                opacity="0.4"
+              />
+            </Svg>
+          );
+        case 'tetrahedron':
+          return (
+            <Svg width={size} height={size} viewBox="0 0 100 100" fill="none">
+              <Path
+                d="M 50,10 L 15,85 L 85,85 Z"
+                fill={`${color}0A`}
+                stroke={color}
+                strokeWidth="1.5"
+                opacity="0.4"
+              />
+              <Path
+                d="M 50,10 L 50,60 L 15,85"
+                stroke={color}
+                strokeWidth="1"
+                opacity="0.2"
+              />
+              <Path
+                d="M 50,60 L 85,85"
+                stroke={color}
+                strokeWidth="1"
+                opacity="0.2"
+              />
+            </Svg>
+          );
+      }
+    };
+
+    return (
+      <Animated.View
+        pointerEvents="none"
+        style={[{ position: 'absolute', top: 0, left: 0 }, animatedStyle]}
+      >
+        {renderShape()}
+      </Animated.View>
+    );
+  },
+);
+FloatingShape.displayName = 'FloatingShape';
+
+// ─── MASTER AMBIENT CONTROLLER ───
+const AmbientArchitecture = React.memo(() => {
+  const { width, height } = Dimensions.get('window');
+  const isDesktop = width >= 1024;
+
+  // Anchors - SINGLE Wave exactly centered behind the SVG Vault icon
+  const primaryX = width / 2;
+  // Vault icon sits near the top. paddingTop is ~40-60. Half vault height is 60.
+  const primaryY = Platform.OS === 'ios' ? 120 : 100;
+
+  const massiveWaveRadius = isDesktop ? width * 1.5 : height * 2;
+
+  // ⚙️ CUSTOMIZATION: 14000ms = 14 seconds per wave cycle
+  const GLOBAL_WAVE_DURATION = 16000;
+
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      {/* ── ONLY ONE WAVE EMITTER (Anchored behind the Vault) ── */}
+      <WaveEmitter
+        centerX={primaryX}
+        centerY={primaryY}
+        coreSize={isDesktop ? 16 : 12}
+        color={GREEN} // Cyan core wave
+        maxWaveSize={massiveWaveRadius}
+        waveCount={4} // Emits 4 continuous ripples for a smooth, unbroken pulse
+        baseDuration={GLOBAL_WAVE_DURATION}
+      />
+
+      {/* ── 3 MICRO-FLOATING SHAPES (Dramatically Scaled Down & Slowed Down) ── */}
+      <FloatingShape
+        type="hexagon"
+        color={CYAN}
+        size={30} // Very small
+        initialX={width * 0.4}
+        initialY={height * 0.4}
+        velocityX={0.03} // Barely drifting
+        velocityY={0.04}
+        rotationSpeed={0.08} // Barely spinning
+      />
+      <FloatingShape
+        type="tetrahedron"
+        color={PURPLE}
+        size={45}
+        initialX={width * 0.75}
+        initialY={height * 0.6}
+        velocityX={-0.04}
+        velocityY={-0.02}
+        rotationSpeed={-0.1}
+      />
+      <FloatingShape
+        type="diamond"
+        color={PINK}
+        size={25} // Tiny accent
+        initialX={width * 0.4}
+        initialY={height * 0.8}
+        velocityX={0.05}
+        velocityY={-0.03}
+        rotationSpeed={0.15}
+      />
+    </View>
+  );
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MODULE 3: NATIVE SVG ANIMATION (THE VAULT)
 // ══════════════════════════════════════════════════════════════════════════════
 const AnimatedVaultIcon = () => {
   const floatY = useSharedValue(0);
@@ -179,7 +452,6 @@ const AnimatedVaultIcon = () => {
       style={[{ width: 120, height: 120, alignSelf: 'center' }, floatStyle]}
     >
       <Svg width="100%" height="100%" viewBox="0 0 120 120">
-        {/* Vault Body */}
         <Rect
           x="10"
           y="20"
@@ -198,7 +470,6 @@ const AnimatedVaultIcon = () => {
           rx="8"
           fill="rgba(0, 240, 255, 0.05)"
         />
-        {/* Accent Lines */}
         <Path
           d="M 25 35 L 45 35"
           stroke={PURPLE}
@@ -211,11 +482,9 @@ const AnimatedVaultIcon = () => {
           strokeWidth="4"
           strokeLinecap="round"
         />
-        {/* Indicator Light */}
         <Circle cx="90" cy="35" r="4" fill={GREEN} />
       </Svg>
 
-      {/* Spinning Dial Overlay */}
       <Animated.View
         style={[
           { position: 'absolute', top: 40, left: 35, width: 50, height: 50 },
@@ -249,7 +518,7 @@ const AnimatedVaultIcon = () => {
 };
 
 // ══════════════════════════════════════════════════════════════════════════════
-// MODULE 3: UI COMPONENTS (Pills, Pulses, Cards)
+// MODULE 4: UI COMPONENTS (Pills, Pulses, Cards)
 // ══════════════════════════════════════════════════════════════════════════════
 const LivePulse = ({ color }: { color: string }) => {
   const opacity = useSharedValue(1);
@@ -573,7 +842,7 @@ const EmptyState = ({ filtered }: { filtered: boolean }) => (
 );
 
 // ══════════════════════════════════════════════════════════════════════════════
-// MODULE 4: MAIN DASHBOARD LAYOUT
+// MODULE 5: MAIN DASHBOARD LAYOUT
 // ══════════════════════════════════════════════════════════════════════════════
 export default function HistoryPage() {
   const router = useRouter();
@@ -611,10 +880,9 @@ export default function HistoryPage() {
     }
   }, [refetch]);
 
-  // ─── THE FIX: headerElement ───
-  // By creating this as a direct variable instead of an inline function,
-  // React Native reconciles it safely. The search bar stays in the right
-  // visual order but WILL NOT lose focus or refresh when you type.
+  // ─── CRITICAL FIX: headerElement ───
+  // Constructed externally to prevent React Native from destroying focus states
+  // when the search text updates.
   const headerElement = (
     <View
       style={{
@@ -624,12 +892,10 @@ export default function HistoryPage() {
         paddingBottom: 0,
       }}
     >
-      {/* 1. Floating Vault SVG */}
       <Animated.View entering={FadeInDown.duration(400)}>
         <AnimatedVaultIcon />
       </Animated.View>
 
-      {/* 2. Processed Count Badge */}
       <Animated.View
         entering={FadeInDown.duration(400).delay(100)}
         style={{ marginTop: 24 }}
@@ -664,7 +930,6 @@ export default function HistoryPage() {
         </View>
       </Animated.View>
 
-      {/* 3. Glowing Line Divider */}
       <Animated.View
         entering={FadeInDown.duration(400).delay(200)}
         style={{
@@ -681,7 +946,6 @@ export default function HistoryPage() {
         }}
       />
 
-      {/* 4. Search Bar - Back in the correct order */}
       <Animated.View
         entering={FadeInDown.duration(400).delay(300)}
         style={{ width: '100%', paddingBottom: 16 }}
@@ -709,7 +973,7 @@ export default function HistoryPage() {
               flex: 1,
               color: '#FFFFFF',
               fontSize: 14,
-              ...(Platform.OS === 'web' ? ({ outline: 'none' } as any) : {}),
+              ...(IS_WEB ? ({ outline: 'none' } as any) : {}),
             }}
           />
           {search.length > 0 && (
@@ -720,7 +984,6 @@ export default function HistoryPage() {
         </View>
       </Animated.View>
 
-      {/* 5. Filter Chips Row */}
       <Animated.View
         entering={FadeInDown.duration(400).delay(400)}
         style={{ width: '100%', marginBottom: 10 }}
@@ -752,31 +1015,9 @@ export default function HistoryPage() {
 
   return (
     <View style={{ flex: 1, backgroundColor: DARK_NAVY }}>
-      {/* Background Ambient Engine */}
-      <AmbientOrb
-        color={CYAN}
-        size={220}
-        top={-20}
-        left={-40}
-        opacity={0.06}
-        delay={0}
-      />
-      <AmbientOrb
-        color={PURPLE}
-        size={180}
-        top={280}
-        right={-30}
-        opacity={0.08}
-        delay={1000}
-      />
-      <AmbientOrb
-        color={GREEN}
-        size={150}
-        bottom={100}
-        left={40}
-        opacity={0.03}
-        delay={2000}
-      />
+      {/* ── ISOLATED AMBIENT KERNEL ── */}
+      {/* Fixed to the screen. pointerEvents="none" guarantees zero touch overlap */}
+      <AmbientArchitecture />
 
       {isLoading ? (
         <View
@@ -788,7 +1029,6 @@ export default function HistoryPage() {
         <FlatList
           data={filtered}
           keyExtractor={(item) => item.id}
-          // The fix: pass headerElement directly without an inline arrow function
           ListHeaderComponent={headerElement}
           ListEmptyComponent={
             <EmptyState filtered={filter !== 'all' || !!search.trim()} />

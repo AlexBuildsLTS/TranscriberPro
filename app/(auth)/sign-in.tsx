@@ -8,6 +8,9 @@
  * This file serves a primary entry point for users identity verifications
  * - Multi-Platform OAuth: Native device browser handoff for Google Sign-In and Web redirect
  * - Anti-Flash UX: Reanimated button morphing prevents DOM destruction and keyboard snap
+ * - UI Physics: CALM Multi-Wave Engine. Smooth sine-wave pulses, no snapping.
+ * - Layout: Desktop split-pane with perfectly centered flex layouts.
+ * * ============================================================================
  */
 
 import React, { useState, memo, useCallback, useEffect } from 'react';
@@ -73,6 +76,7 @@ import Animated, {
   interpolate,
   withDelay,
   interpolateColor,
+  Easing,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -196,47 +200,222 @@ function mapAuthError(errorMessage: string): {
   return { type: 'error', text: errorMessage };
 }
 
-// ─── AMBIENT BACKGROUND ENGINE ───────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// MODULE 1: CALM MULTI-WAVE INTERFERENCE ENGINE
+// ══════════════════════════════════════════════════════════════════════════════
+// ⚙️ CUSTOMIZATION GUIDE - RIPPLE BEHAVIOR:
+// - duration: How many milliseconds it takes a ripple to reach max size.
+//   Higher = Slower, calmer waves. (Default: 14000ms)
+// - maxScale: How large the ripple gets relative to its core.
+// - opacity interpolation: [0, 0.1, 0.6, 1] means:
+//   starts invisible (0), fades to 30% visibility early, slowly fades to 0.
+// ══════════════════════════════════════════════════════════════════════════════
 
-const AmbientGradient = memo(
-  ({ delay = 0, color = '#3B82F6' }: { delay?: number; color?: string }) => {
-    const pulse = useSharedValue(0);
-    const { width } = Dimensions.get('window');
+interface RippleProps {
+  color: string;
+  delay: number;
+  duration: number;
+  maxScale: number;
+}
+
+const SingleRipple = memo(
+  ({ color, delay, duration, maxScale }: RippleProps) => {
+    const progress = useSharedValue(0);
 
     useEffect(() => {
-      pulse.value = withDelay(
+      progress.value = withDelay(
         delay,
-        withRepeat(withTiming(1, { duration: 10000 }), -1, true),
+        withRepeat(
+          // Easing.out(Easing.sin) creates a very smooth, natural expanding deceleration
+          withTiming(1, { duration, easing: Easing.out(Easing.sin) }),
+          -1,
+          false, // Resets instantly to 0 to spawn the next ripple
+        ),
       );
-    }, [delay, pulse]);
+    }, [delay, duration, progress]);
 
-    const animatedStyle = useAnimatedStyle(() => ({
-      transform: [
-        { scale: interpolate(pulse.value, [0, 1], [1, 1.4]) },
-        { translateX: interpolate(pulse.value, [0, 1], [0, width * 0.08]) },
-        { translateY: interpolate(pulse.value, [0, 1], [0, width * 0.04]) },
-      ],
-      opacity: interpolate(pulse.value, [0, 1], [0.06, 0.12]),
-    }));
+    const animatedStyle = useAnimatedStyle(() => {
+      return {
+        transform: [
+          { scale: interpolate(progress.value, [0, 1], [1, maxScale]) },
+        ],
+        // CRITICAL FIX: Starts at opacity 0 to prevent the "teleporting/blinking" pop effect.
+        // Peaks gently at 0.3 opacity, then softly fades out completely by the end.
+        opacity: interpolate(
+          progress.value,
+          [0, 0.1, 0.6, 1],
+          [0, 0.3, 0.05, 0],
+        ),
+        borderWidth: interpolate(progress.value, [0, 1], [2, 0]), // Wave thins out as it expands
+      };
+    });
 
     return (
       <Animated.View
-        pointerEvents="none"
         style={[
-          animatedStyle,
           {
             position: 'absolute',
-            width: width * 2.0,
-            height: width * 2.0,
-            backgroundColor: color,
-            borderRadius: width,
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            borderRadius: 9999,
+            borderColor: color,
+            backgroundColor: 'transparent',
           },
+          animatedStyle,
         ]}
       />
     );
   },
 );
-AmbientGradient.displayName = 'AmbientGradient';
+SingleRipple.displayName = 'SingleRipple';
+
+interface EmitterProps {
+  centerX: number;
+  centerY: number;
+  coreSize: number;
+  color: string;
+  maxWaveSize: number;
+  waveCount: number;
+  baseDuration: number;
+}
+
+const WaveEmitter = memo(
+  ({
+    centerX,
+    centerY,
+    coreSize,
+    color,
+    maxWaveSize,
+    waveCount,
+    baseDuration,
+  }: EmitterProps) => {
+    const stagger = baseDuration / waveCount;
+    const maxScale = maxWaveSize / coreSize;
+
+    // ⚙️ CUSTOMIZATION: Core Ball Breathing Pulse
+    // This animates the center ball itself, so it looks alive and glowing
+    // instead of just being a static dot.
+    const corePulse = useSharedValue(0.8  );
+
+    useEffect(() => {
+      corePulse.value = withRepeat(
+        // Breathes back and forth every 3 seconds seamlessly
+        withTiming(1, { duration: 8000, easing: Easing.inOut(Easing.quad) }),
+        -1,
+        true,
+      );
+    }, []);
+
+    const coreStyle = useAnimatedStyle(() => ({
+      opacity: interpolate(corePulse.value, [0.8, 1.6], [0.40, 0.8]),
+      transform: [
+        { scale: interpolate(corePulse.value, [0.8, 1.8], [0.70, 1.40]) },
+      ],
+    }));
+
+    return (
+      <View
+        style={{
+          position: 'absolute',
+          left: centerX - coreSize / 2,
+          top: centerY - coreSize / 2,
+          width: coreSize,
+          height: coreSize,
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}
+      >
+        {Array.from({ length: waveCount }).map((_, index) => (
+          <SingleRipple
+            key={`ripple-${index}`}
+            color={color}
+            delay={index * stagger}
+            duration={baseDuration}
+            maxScale={maxScale}
+          />
+        ))}
+
+        {/* The Breathing Core Ball */}
+        <Animated.View
+          style={[
+            coreStyle,
+            {
+              width: coreSize,
+              height: coreSize,
+              borderRadius: coreSize / 2,
+              backgroundColor: color,
+              shadowColor: color,
+              shadowRadius: 12,
+              shadowOpacity: 1,
+              shadowOffset: { width: 0, height: 0 },
+              ...(Platform.OS === 'web'
+                ? ({ boxShadow: `0 0 20px ${color}` } as any)
+                : {}),
+            },
+          ]}
+        />
+      </View>
+    );
+  },
+);
+WaveEmitter.displayName = 'WaveEmitter';
+
+// ⚙️ CUSTOMIZATION GUIDE - MASTER AMBIENT CONTROLLER:
+// To change the speed of the waves globally, adjust `GLOBAL_WAVE_DURATION`.
+// To change colors, modify the `color` prop passed to each WaveEmitter.
+const AmbientArchitecture = memo(() => {
+  const { width, height } = Dimensions.get('window');
+  const isDesktop = width >= 1024;
+
+  // Anchors - where the 3 points live on the screen
+  const primaryX = isDesktop ? width * 0.2 : width * 0.5;
+  const primaryY = height * 0.4;
+  const secondaryLeftX = width * 0.8;
+  const secondaryLeftY = height * 0.7;
+  const secondaryRightX = width * 0.5;
+  const secondaryRightY = height * 0.9;
+
+  const massiveWaveRadius = isDesktop ? width * 0.8 : height * 1.2;
+
+  // SLOWED DOWN: 14000ms = 14 seconds for a wave to cross the screen (Very calm)
+  const GLOBAL_WAVE_DURATION = 14000;
+
+  return (
+    // CRITICAL: pointerEvents="none" prevents the UI from ever blocking touch
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <WaveEmitter
+        centerX={primaryX}
+        centerY={primaryY}
+        coreSize={isDesktop ? 16 : 12}
+        color="#3B82F6" // Calm Blue
+        maxWaveSize={massiveWaveRadius}
+        waveCount={3} // Reduced wave count to avoid spam
+        baseDuration={GLOBAL_WAVE_DURATION}
+      />
+      <WaveEmitter
+        centerX={secondaryLeftX}
+        centerY={secondaryLeftY}
+        coreSize={12}
+        color="#8B5CF6" // Purple
+        maxWaveSize={massiveWaveRadius * 0.8}
+        waveCount={2}
+        baseDuration={GLOBAL_WAVE_DURATION * 1.1} // Slightly out of phase for organic feel
+      />
+      <WaveEmitter
+        centerX={secondaryRightX}
+        centerY={secondaryRightY}
+        coreSize={12}
+        color="#00F0FF" // Cyan
+        maxWaveSize={massiveWaveRadius * 0.7}
+        waveCount={2}
+        baseDuration={GLOBAL_WAVE_DURATION * 1.2}
+      />
+    </View>
+  );
+});
+AmbientArchitecture.displayName = 'AmbientArchitecture';
 
 // ─── MAIN SCREEN COMPONENT ───────────────────────────────────────────────────
 
@@ -418,15 +597,15 @@ export default function SignInScreen() {
 
   return (
     <View className="flex-1 bg-[#000016]">
+      {/* ── AMBIENT WAVE ENGINE ── */}
+      {/* Renders behind everything. Unobstructive and performant. */}
       <View
         style={[
           StyleSheet.absoluteFill,
           { pointerEvents: 'none', overflow: 'hidden' },
         ]}
       >
-        <AmbientGradient delay={100} color="#3B82F6" />
-        <AmbientGradient delay={4000} color="#8B5CF6" />
-        <AmbientGradient delay={6000} color="#2003fc" />
+        <AmbientArchitecture />
       </View>
 
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
@@ -443,6 +622,8 @@ export default function SignInScreen() {
                     maxWidth: 440,
                     alignSelf: 'center',
                     paddingVertical: 40,
+                    flexGrow: 1,
+                    justifyContent: 'center', // Perfect Vertical Centering for Form
                   }}
                   showsVerticalScrollIndicator={false}
                   keyboardShouldPersistTaps="handled"
@@ -584,10 +765,8 @@ const AuthForm = memo(
 
     const passwordsMatch =
       confirmPassword.length > 0 && password === confirmPassword;
-
     const SlideIn = FadeInRight.springify().damping(20).mass(1).stiffness(140);
     const SlideOut = FadeOutUp.duration(200);
-
     const buttonColor = useSharedValue(0);
 
     useEffect(() => {
@@ -631,20 +810,16 @@ const AuthForm = memo(
         layout={Layout.springify().damping(20).stiffness(150)}
         style={styles.formContainer}
       >
-        {successState !== 'none' && (
+        {successState !== 'none' ? (
+          // CLEAN SUCCESS STATE: Fades in seamlessly over the existing glass container without rendering a black box.
           <Animated.View
             entering={FadeInDown.duration(400)}
             exiting={FadeOutUp.duration(300)}
-            style={[
-              StyleSheet.absoluteFill,
-              {
-                backgroundColor: 'rgba(0,0,0,0.95)',
-                zIndex: 50,
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderRadius: 18,
-              },
-            ]}
+            style={{
+              paddingVertical: 60,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
           >
             <CheckCircle2 size={80} color="#32FF00" />
             <Text className="text-[#32FF00] text-lg font-black uppercase tracking-widest mt-6 text-center">
@@ -656,336 +831,338 @@ const AuthForm = memo(
                 : 'Preparing secure connection...'}
             </Text>
           </Animated.View>
-        )}
-
-        <View className="mb-6">
-          <View style={styles.tabContainer}>
-            <View style={{ flex: 1 }}>
-              <TouchableOpacity
-                onPress={() => {
-                  setAuthMode('sign-in');
-                  setConfirmPassword('');
-                  setFullName('');
-                }}
-                activeOpacity={0.8}
-                style={[
-                  styles.tabButton,
-                  !isSignUp ? styles.tabActive : styles.tabInactive,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.tabText,
-                    !isSignUp ? styles.tabTextActive : styles.tabTextInactive,
-                  ]}
-                >
-                  SIGN IN
-                </Text>
-              </TouchableOpacity>
-            </View>
-            <View style={{ flex: 1 }}>
-              <TouchableOpacity
-                onPress={() => {
-                  setAuthMode('sign-up');
-                }}
-                activeOpacity={0.8}
-                style={[
-                  styles.tabButton,
-                  isSignUp ? styles.tabActive : styles.tabInactive,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.tabText,
-                    isSignUp ? styles.tabTextActive : styles.tabTextInactive,
-                  ]}
-                >
-                  SIGN UP
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-
-        {isSignUp && (
-          <Animated.View entering={SlideIn} exiting={SlideOut}>
-            <FormField label="Full Name" icon={User}>
-              <TextInput
-                className="flex-1 h-full ml-3 text-sm font-medium text-white outline-none"
-                placeholder="John Doe"
-                placeholderTextColor="#475569"
-                value={fullName}
-                onChangeText={setFullName}
-                editable={!loading && successState === 'none'}
-              />
-            </FormField>
-          </Animated.View>
-        )}
-
-        <FormField label="Email" icon={Mail}>
-          <TextInput
-            className="flex-1 h-full ml-3 text-sm font-medium text-white outline-none"
-            placeholder="Enter Your Address"
-            placeholderTextColor="#475569"
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            editable={!loading && successState === 'none'}
-            autoCorrect={false}
-          />
-        </FormField>
-
-        <View style={{ marginBottom: isSignUp ? 12 : 0 }}>
-          <Text className="text-[#00F0FF] font-black text-[10px] tracking-widest uppercase mb-2 ml-1">
-            PASSWORD
-          </Text>
-          <View className="bg-white/[0.02] border border-white/10 rounded-2xl h-16 flex-row items-center px-4">
-            <Lock size={18} color="#A1A1AA" />
-            <TextInput
-              className="flex-1 h-full ml-3 text-sm font-medium text-white outline-none"
-              placeholder="Min. 10 characters"
-              placeholderTextColor="#475569"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-              editable={!loading && successState === 'none'}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            <TouchableOpacity
-              onPress={() => setShowPassword(!showPassword)}
-              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-            >
-              {showPassword ? (
-                <EyeOff size={18} color="#A1A1AA" />
-              ) : (
-                <Eye size={18} color="#A1A1AA" />
-              )}
-            </TouchableOpacity>
-          </View>
-          {isSignUp && password.length > 0 && (
-            <Animated.View
-              entering={FadeInDown}
-              exiting={SlideOut}
-              className="px-1 mt-4"
-            >
-              <View className="flex-row h-1 gap-1 mb-2">
-                {[1, 2, 3, 4].map((level) => (
-                  <View
-                    key={level}
-                    style={{
-                      flex: 4,
-                      borderRadius: 80,
-                      backgroundColor:
-                        strength.score >= level
-                          ? strength.color
-                          : 'rgba(255,255,255,0.1)',
+        ) : (
+          <>
+            <View className="mb-6">
+              <View style={styles.tabContainer}>
+                <View style={{ flex: 1 }}>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setAuthMode('sign-in');
+                      setConfirmPassword('');
+                      setFullName('');
                     }}
+                    activeOpacity={0.8}
+                    style={[
+                      styles.tabButton,
+                      !isSignUp ? styles.tabActive : styles.tabInactive,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.tabText,
+                        !isSignUp
+                          ? styles.tabTextActive
+                          : styles.tabTextInactive,
+                      ]}
+                    >
+                      SIGN IN
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setAuthMode('sign-up');
+                    }}
+                    activeOpacity={0.8}
+                    style={[
+                      styles.tabButton,
+                      isSignUp ? styles.tabActive : styles.tabInactive,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.tabText,
+                        isSignUp
+                          ? styles.tabTextActive
+                          : styles.tabTextInactive,
+                      ]}
+                    >
+                      SIGN UP
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+
+            {isSignUp && (
+              <Animated.View entering={SlideIn} exiting={SlideOut}>
+                <FormField label="Full Name" icon={User}>
+                  <TextInput
+                    className="flex-1 h-full ml-3 text-sm font-medium text-white outline-none"
+                    placeholder="John Doe"
+                    placeholderTextColor="#475569"
+                    value={fullName}
+                    onChangeText={setFullName}
+                    editable={!loading && successState === 'none'}
                   />
-                ))}
-              </View>
-              <View className="flex-row items-center justify-between">
-                <Text className="text-white/20 text-[8px] font-mono uppercase tracking-widest">
-                  uppercase, number, symbol
-                </Text>
-                <Text
-                  style={{ color: strength.color }}
-                  className="text-[8px] font-black uppercase tracking-widest"
-                >
-                  {strength.label}
-                </Text>
-              </View>
-            </Animated.View>
-          )}
-        </View>
+                </FormField>
+              </Animated.View>
+            )}
 
-        {!isSignUp && (
-          <Animated.View
-            entering={FadeInDown.duration(300)}
-            style={{ alignItems: 'flex-end', marginTop: 12, marginBottom: 12 }}
-          >
-            <TouchableOpacity
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Text className="text-[#00F0FF] text-[11px] items-center my-3 ml-1 font-bold tracking-widest uppercase hover:text-white transition-colors">
-                Forgot Password?
-              </Text>
-            </TouchableOpacity>
-          </Animated.View>
-        )}
-
-        {isSignUp && (
-          <Animated.View entering={SlideIn.delay(100)} exiting={SlideOut}>
-            <Text className="text-[#00F0FF] font-black text-[10px] tracking-widest uppercase mb-2 ml-1 mt-2">
-              Confirm PASSWORD
-            </Text>
-            <View
-              className={cn(
-                'border rounded-2xl h-16 flex-row items-center px-4',
-                confirmPassword.length > 0 && !passwordsMatch
-                  ? 'border-rose-500/50'
-                  : passwordsMatch
-                    ? 'border-[#32FF00]/50'
-                    : 'border-white/10',
-              )}
-              style={{ backgroundColor: 'rgba(255,255,255,0.02)' }}
-            >
-              <Fingerprint size={18} color="#A1A1AA" />
+            <FormField label="Email" icon={Mail}>
               <TextInput
                 className="flex-1 h-full ml-3 text-sm font-medium text-white outline-none"
-                placeholder="Re-enter Password"
+                placeholder="Enter Your Address"
                 placeholderTextColor="#475569"
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                secureTextEntry={!showConfirm}
-                editable={!loading && successState === 'none'}
+                value={email}
+                onChangeText={setEmail}
                 autoCapitalize="none"
+                keyboardType="email-address"
+                editable={!loading && successState === 'none'}
                 autoCorrect={false}
               />
-            </View>
+            </FormField>
 
-            <TouchableOpacity
-              onPress={() => setAgreedToTerms(!agreedToTerms)}
-              className="flex-row items-start gap-3 mt-4 mb-2"
-              activeOpacity={0.7}
-            >
-              {agreedToTerms ? (
-                <CheckCircle2 size={20} color="#00F0FF" />
-              ) : (
-                <Circle size={20} color="rgba(255,255,255,0.2)" />
-              )}
-              <Text className="flex-1 text-white/40 text-[11px] leading-5">
-                I agree to the{' '}
-                <Text className="font-bold text-[#00F0FF]">
-                  Terms of Service
-                </Text>{' '}
-                and{' '}
-                <Text className="font-bold text-[#00F0FF]">Privacy Policy</Text>
+            <View style={{ marginBottom: isSignUp ? 12 : 0 }}>
+              <Text className="text-[#00F0FF] font-black text-[10px] tracking-widest uppercase mb-2 ml-1">
+                PASSWORD
               </Text>
-            </TouchableOpacity>
-          </Animated.View>
-        )}
-
-        {/* ─── DYNAMIC INLINE TOAST MESSAGES (STRICT INLINE STYLES) ─── */}
-        {message && successState === 'none' && (
-          <Animated.View
-            entering={FadeInDown.springify()}
-            exiting={FadeOutUp}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              padding: 16,
-              marginTop: 24,
-              borderRadius: 12,
-              borderWidth: 1,
-              backgroundColor:
-                message.type === 'error'
-                  ? 'rgba(244, 63, 94, 0.1)'
-                  : message.type === 'warning'
-                    ? 'rgba(245, 158, 11, 0.1)'
-                    : 'rgba(16, 185, 129, 0.1)',
-              borderColor:
-                message.type === 'error'
-                  ? 'rgba(244, 63, 94, 0.3)'
-                  : message.type === 'warning'
-                    ? 'rgba(245, 158, 11, 0.3)'
-                    : 'rgba(16, 185, 129, 0.3)',
-            }}
-          >
-            <View style={{ marginRight: 12 }}>
-              {message.type === 'error' && (
-                <AlertCircle size={18} color="#F43F5E" />
-              )}
-              {message.type === 'warning' && (
-                <AlertTriangle size={18} color="#F59E0B" />
-              )}
-              {message.type === 'success' && (
-                <CheckCircle2 size={18} color="#10B981" />
-              )}
-            </View>
-            <Text
-              style={{
-                flex: 1,
-                fontSize: 12,
-                fontWeight: '500',
-                color:
-                  message.type === 'error'
-                    ? '#F43F5E'
-                    : message.type === 'warning'
-                      ? '#F59E0B'
-                      : '#10B981',
-              }}
-            >
-              {message.text}
-            </Text>
-          </Animated.View>
-        )}
-
-        <Animated.View
-          style={[
-            animatedButtonStyle,
-            { borderRadius: 20, borderWidth: 1, marginTop: 16 },
-          ]}
-        >
-          <TouchableOpacity
-            onPress={onAction}
-            disabled={loading || successState !== 'none'}
-            activeOpacity={0.8}
-            className="flex-row items-center justify-center h-[60px]"
-          >
-            {loading ? (
-              <ActivityIndicator color="#00F0FF" />
-            ) : successState !== 'none' ? (
-              <View className="flex-row items-center gap-x-2">
-                <CheckCircle2 size={20} color="#32FF00" />
-                <Text className="text-sm font-black tracking-widest text-[#32FF00] uppercase">
-                  {successState === 'login'
-                    ? 'ACCESS GRANTED'
-                    : 'IDENTITY INITIALIZED'}
-                </Text>
-              </View>
-            ) : (
-              <Text className="text-base font-black tracking-widest text-[#00F0FF] uppercase">
-                {isSignUp ? 'CREATE ACCOUNT' : 'SIGN IN'}
-              </Text>
-            )}
-          </TouchableOpacity>
-        </Animated.View>
-
-        <View
-          pointerEvents={successState !== 'none' ? 'none' : 'auto'}
-          style={{ opacity: successState !== 'none' ? 0.5 : 1 }}
-        >
-          <View className="flex-row items-center my-6 opacity-30">
-            <View className="flex-1 h-[1px] bg-cyan-500" />
-            <Text className="px-4 text-[14px] font-bold text-cyan-500 uppercase tracking-widest">
-              VerAI
-            </Text>
-            <View className="flex-1 h-[1px] bg-cyan-500" />
-          </View>
-
-          <TouchableOpacity
-            onPress={onGoogleAction}
-            disabled={isGoogleLoading || loading || successState !== 'none'}
-            activeOpacity={0.7}
-            className="flex-row items-center justify-center py-4 mb-3 transition-opacity bg-white border rounded-xl border-white/20"
-          >
-            {isGoogleLoading ? (
-              <ActivityIndicator color="#000" size="small" />
-            ) : (
-              <>
-                <Image
-                  source={require('../../assets/google-logo.png')}
-                  style={{ width: 18, height: 18, marginRight: 10 }}
+              <View className="bg-white/[0.02] border border-white/10 rounded-2xl h-16 flex-row items-center px-4">
+                <Lock size={18} color="#A1A1AA" />
+                <TextInput
+                  className="flex-1 h-full ml-3 text-sm font-medium text-white outline-none"
+                  placeholder="Min. 10 characters"
+                  placeholderTextColor="#475569"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  editable={!loading && successState === 'none'}
+                  autoCapitalize="none"
+                  autoCorrect={false}
                 />
-                <Text className="text-xs font-bold tracking-widest text-black uppercase">
-                  SIGN IN GOOGLE
-                </Text>
-              </>
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                >
+                  {showPassword ? (
+                    <EyeOff size={18} color="#A1A1AA" />
+                  ) : (
+                    <Eye size={18} color="#A1A1AA" />
+                  )}
+                </TouchableOpacity>
+              </View>
+              {isSignUp && password.length > 0 && (
+                <Animated.View
+                  entering={FadeInDown}
+                  exiting={SlideOut}
+                  className="px-1 mt-4"
+                >
+                  <View className="flex-row h-1 gap-1 mb-2">
+                    {[1, 2, 3, 4].map((level) => (
+                      <View
+                        key={level}
+                        style={{
+                          flex: 4,
+                          borderRadius: 80,
+                          backgroundColor:
+                            strength.score >= level
+                              ? strength.color
+                              : 'rgba(255,255,255,0.1)',
+                        }}
+                      />
+                    ))}
+                  </View>
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-white/20 text-[8px] font-mono uppercase tracking-widest">
+                      uppercase, number, symbol
+                    </Text>
+                    <Text
+                      style={{ color: strength.color }}
+                      className="text-[8px] font-black uppercase tracking-widest"
+                    >
+                      {strength.label}
+                    </Text>
+                  </View>
+                </Animated.View>
+              )}
+            </View>
+
+            {!isSignUp && (
+              <Animated.View
+                entering={FadeInDown.duration(300)}
+                style={{
+                  alignItems: 'flex-end',
+                  marginTop: 12,
+                  marginBottom: 12,
+                }}
+              >
+                <TouchableOpacity
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Text className="text-[#00F0FF] text-[11px] items-center my-3 ml-1 font-bold tracking-widest uppercase hover:text-white transition-colors">
+                    Forgot Password?
+                  </Text>
+                </TouchableOpacity>
+              </Animated.View>
             )}
-          </TouchableOpacity>
-        </View>
+
+            {isSignUp && (
+              <Animated.View entering={SlideIn.delay(100)} exiting={SlideOut}>
+                <Text className="text-[#00F0FF] font-black text-[10px] tracking-widest uppercase mb-2 ml-1 mt-2">
+                  Confirm PASSWORD
+                </Text>
+                <View
+                  className={cn(
+                    'border rounded-2xl h-16 flex-row items-center px-4',
+                    confirmPassword.length > 0 && !passwordsMatch
+                      ? 'border-rose-500/50'
+                      : passwordsMatch
+                        ? 'border-[#32FF00]/50'
+                        : 'border-white/10',
+                  )}
+                  style={{ backgroundColor: 'rgba(255,255,255,0.02)' }}
+                >
+                  <Fingerprint size={18} color="#A1A1AA" />
+                  <TextInput
+                    className="flex-1 h-full ml-3 text-sm font-medium text-white outline-none"
+                    placeholder="Re-enter Password"
+                    placeholderTextColor="#475569"
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    secureTextEntry={!showConfirm}
+                    editable={!loading && successState === 'none'}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                </View>
+
+                <TouchableOpacity
+                  onPress={() => setAgreedToTerms(!agreedToTerms)}
+                  className="flex-row items-start gap-3 mt-4 mb-2"
+                  activeOpacity={0.7}
+                >
+                  {agreedToTerms ? (
+                    <CheckCircle2 size={20} color="#00F0FF" />
+                  ) : (
+                    <Circle size={20} color="rgba(255,255,255,0.2)" />
+                  )}
+                  <Text className="flex-1 text-white/40 text-[11px] leading-5">
+                    I agree to the{' '}
+                    <Text className="font-bold text-[#00F0FF]">
+                      Terms of Service
+                    </Text>{' '}
+                    and{' '}
+                    <Text className="font-bold text-[#00F0FF]">
+                      Privacy Policy
+                    </Text>
+                  </Text>
+                </TouchableOpacity>
+              </Animated.View>
+            )}
+
+            {message && successState === 'none' && (
+              <Animated.View
+                entering={FadeInDown.springify()}
+                exiting={FadeOutUp}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  padding: 16,
+                  marginTop: 24,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  backgroundColor:
+                    message.type === 'error'
+                      ? 'rgba(244, 63, 94, 0.1)'
+                      : message.type === 'warning'
+                        ? 'rgba(245, 158, 11, 0.1)'
+                        : 'rgba(16, 185, 129, 0.1)',
+                  borderColor:
+                    message.type === 'error'
+                      ? 'rgba(244, 63, 94, 0.3)'
+                      : message.type === 'warning'
+                        ? 'rgba(245, 158, 11, 0.3)'
+                        : 'rgba(16, 185, 129, 0.3)',
+                }}
+              >
+                <View style={{ marginRight: 12 }}>
+                  {message.type === 'error' && (
+                    <AlertCircle size={18} color="#F43F5E" />
+                  )}
+                  {message.type === 'warning' && (
+                    <AlertTriangle size={18} color="#F59E0B" />
+                  )}
+                  {message.type === 'success' && (
+                    <CheckCircle2 size={18} color="#10B981" />
+                  )}
+                </View>
+                <Text
+                  style={{
+                    flex: 1,
+                    fontSize: 12,
+                    fontWeight: '500',
+                    color:
+                      message.type === 'error'
+                        ? '#F43F5E'
+                        : message.type === 'warning'
+                          ? '#F59E0B'
+                          : '#10B981',
+                  }}
+                >
+                  {message.text}
+                </Text>
+              </Animated.View>
+            )}
+
+            <Animated.View
+              style={[
+                animatedButtonStyle,
+                { borderRadius: 20, borderWidth: 1, marginTop: 16 },
+              ]}
+            >
+              <TouchableOpacity
+                onPress={onAction}
+                disabled={loading || successState !== 'none'}
+                activeOpacity={0.8}
+                className="flex-row items-center justify-center h-[60px]"
+              >
+                {loading ? (
+                  <ActivityIndicator color="#00F0FF" />
+                ) : (
+                  <Text className="text-base font-black tracking-widest text-[#00F0FF] uppercase">
+                    {isSignUp ? 'CREATE ACCOUNT' : 'SIGN IN'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </Animated.View>
+
+            <View
+              pointerEvents={successState !== 'none' ? 'none' : 'auto'}
+              style={{ opacity: successState !== 'none' ? 0.5 : 1 }}
+            >
+              <View className="flex-row items-center my-6 opacity-30">
+                <View className="flex-1 h-[1px] bg-cyan-500" />
+                <Text className="px-4 text-[14px] font-bold text-cyan-500 uppercase tracking-widest">
+                  VerAI
+                </Text>
+                <View className="flex-1 h-[1px] bg-cyan-500" />
+              </View>
+
+              <TouchableOpacity
+                onPress={onGoogleAction}
+                disabled={isGoogleLoading || loading || successState !== 'none'}
+                activeOpacity={0.7}
+                className="flex-row items-center justify-center py-4 mb-3 transition-opacity bg-white border rounded-xl border-white/20"
+              >
+                {isGoogleLoading ? (
+                  <ActivityIndicator color="#000" size="small" />
+                ) : (
+                  <>
+                    <Image
+                      source={require('../../assets/google-logo.png')}
+                      style={{ width: 18, height: 18, marginRight: 10 }}
+                    />
+                    <Text className="text-xs font-bold tracking-widest text-black uppercase">
+                      SIGN IN GOOGLE
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
       </Animated.View>
     );
   },
@@ -1077,7 +1254,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(2, 6, 23, 0.4)',
   },
   desktopScroll: { flex: 1 },
-  desktopScrollContent: { padding: 80, paddingBottom: 150 },
+  desktopScrollContent: {
+    padding: 80,
+    paddingBottom: 150,
+    flexGrow: 1,
+    justifyContent: 'center', // FIX: Perfectly centers the bento cards vertically on Web/Desktop
+  },
   mobileScroll: { flex: 1 },
   mobileScrollContent: {
     flexGrow: 1,

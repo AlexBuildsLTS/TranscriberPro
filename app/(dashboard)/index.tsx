@@ -1,10 +1,14 @@
 /**
  * app/(dashboard)/index.tsx
- * VerAI Dashboard
- * ----------------------------------------------------------------------------
- * NATIVE SVG: Bypasses Metro bundler crashes using react-native-svg.
- * TANSTACK MUTATION: Securely dispatches payloads via useProcessVideo hook.
- * REALTIME DB SYNC: Listens to the `videos` table for live pipeline updates.
+ * VeraxAI Dashboard — Master Orchestration UI
+ * ══════════════════════════════════════════════════════════════════════════════
+ * PROTOCOL:
+ * 1. NATIVE SVG: Bypasses Metro bundler crashes using react-native-svg.
+ * 2. SINGLE CORE WAVE: Calm, 14-second pulsing wave emitting strictly from the center.
+ * 3. GEOMETRIC PHYSICS: Hexagon, Tetrahedron, Diamond (Scaled down & slowed down).
+ * 4. TOUCH SAFETY: StyleSheet.absoluteFill + pointerEvents="none" guarantees zero UI block.
+ * 5. REALTIME DB SYNC: Listens to the `videos` table for live pipeline updates.
+ * ══════════════════════════════════════════════════════════════════════════════
  */
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -17,6 +21,7 @@ import {
   Dimensions,
   KeyboardAvoidingView,
   LayoutAnimation,
+  StyleSheet,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -45,10 +50,22 @@ import Animated, {
   withDelay,
   Easing,
   withSequence,
+  useFrameCallback,
 } from 'react-native-reanimated';
 
+// ─── THEME CONSTANTS (Liquid Neon) ───────────────────────────────────────────
+const THEME = {
+  cyan: '#00F0FF',
+  purple: '#8A2BE2',
+  pink: '#FF007F',
+  green: '#32FF00',
+  obsidian: '#020205',
+};
+
+const IS_WEB = Platform.OS === 'web';
+
 // ─── SMALL BADGE ICON ────────────────────────────────────────────────────────
-const SmallBadgeIcon = ({ width = 20, height = 20, color = '#60A5FA' }) => (
+const SmallBadgeIcon = ({ width = 20, height = 20, color = THEME.cyan }) => (
   <Svg
     width={width}
     height={height}
@@ -63,7 +80,7 @@ const SmallBadgeIcon = ({ width = 20, height = 20, color = '#60A5FA' }) => (
   </Svg>
 );
 
-// ─── ANIMATED HERO SVG ───────────────────────────────────────────────────────
+// ─── ANIMATED HERO SVG (The Video Processor Icon) ────────────────────────────
 const AnimatedConverter = () => {
   const rotation = useSharedValue(0);
   const floatY = useSharedValue(0);
@@ -143,65 +160,337 @@ const AnimatedConverter = () => {
 };
 
 // ══════════════════════════════════════════════════════════════════════════════
-// MODULE 1: AMBIENT BACKGROUND ENGINE (Restored 3-Color Glow & Fixed Edges)
+// MODULE 1: CALM SINGLE-WAVE INTERFERENCE ENGINE
 // ══════════════════════════════════════════════════════════════════════════════
-const AmbientGradient = ({
-  delay = 0,
-  color = '#00081a',
-  size,
-  top,
-  left,
-  right,
-  bottom,
-}: any) => {
-  const pulse = useSharedValue(0);
-  const { width, height } = Dimensions.get('window');
 
-  useEffect(() => {
-    pulse.value = withDelay(
-      delay,
-      withRepeat(withTiming(1, { duration: 9000 }), -1, true),
+interface RippleProps {
+  color: string;
+  delay: number;
+  duration: number;
+  maxScale: number;
+}
+
+const SingleRipple = React.memo(
+  ({ color, delay, duration, maxScale }: RippleProps) => {
+    const progress = useSharedValue(0);
+
+    useEffect(() => {
+      progress.value = withDelay(
+        delay,
+        withRepeat(
+          withTiming(1, { duration, easing: Easing.out(Easing.sin) }),
+          -1,
+          false, // Instantly resets to 0 to spawn the next ripple
+        ),
+      );
+    }, [delay, duration, progress]);
+
+    const animatedStyle = useAnimatedStyle(() => {
+      return {
+        transform: [
+          { scale: interpolate(progress.value, [0, 1], [1, maxScale]) },
+        ],
+        // Fades up gently to 0.3 opacity, then softly fades out
+        opacity: interpolate(
+          progress.value,
+          [0, 0.1, 0.6, 1],
+          [0, 0.3, 0.05, 0],
+        ),
+        borderWidth: interpolate(progress.value, [0, 1], [2, 2]),
+      };
+    });
+
+    return (
+      <Animated.View
+        style={[
+          {
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            borderRadius: 9999,
+            borderColor: color,
+            backgroundColor: 'transparent',
+          },
+          animatedStyle,
+        ]}
+      />
     );
-  }, [delay, pulse]);
+  },
+);
+SingleRipple.displayName = 'SingleRipple';
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      { scale: interpolate(pulse.value, [0, 1], [0.8, 1.8]) },
-      { translateX: interpolate(pulse.value, [0, 1], [0, width * 0.3]) },
-      { translateY: interpolate(pulse.value, [0, 1], [0, height * 0.5]) },
-    ],
-    opacity: interpolate(pulse.value, [0, 1], [0.02, 0.04]),
-  }));
+interface EmitterProps {
+  centerX: number;
+  centerY: number;
+  coreSize: number;
+  color: string;
+  maxWaveSize: number;
+  waveCount: number;
+  baseDuration: number;
+}
+
+const WaveEmitter = React.memo(
+  ({
+    centerX,
+    centerY,
+    coreSize,
+    color,
+    maxWaveSize,
+    waveCount,
+    baseDuration,
+  }: EmitterProps) => {
+    const stagger = baseDuration / waveCount;
+    const maxScale = maxWaveSize / coreSize;
+
+    const corePulse = useSharedValue(0.4);
+
+    useEffect(() => {
+      corePulse.value = withRepeat(
+        withTiming(1, { duration: 6000, easing: Easing.inOut(Easing.sin) }),
+        -1,
+        true,
+      );
+    }, []);
+
+    const coreStyle = useAnimatedStyle(() => ({
+      opacity: interpolate(corePulse.value, [0.4, 1], [0.4, 1.8]),
+      transform: [
+        { scale: interpolate(corePulse.value, [0.4, 1], [0.45, 1.4]) },
+      ],
+    }));
+
+    return (
+      <View
+        style={{
+          position: 'absolute',
+          left: centerX - coreSize / 2,
+          top: centerY - coreSize / 2,
+          width: coreSize,
+          height: coreSize,
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}
+      >
+        {Array.from({ length: waveCount }).map((_, index) => (
+          <SingleRipple
+            key={`ripple-${index}`}
+            color={color}
+            delay={index * stagger}
+            duration={baseDuration}
+            maxScale={maxScale}
+          />
+        ))}
+
+        <Animated.View
+          style={[
+            coreStyle,
+            {
+              width: coreSize,
+              height: coreSize,
+              borderRadius: coreSize / 2,
+              backgroundColor: color,
+              shadowColor: color,
+              shadowRadius: 12,
+              shadowOpacity: 1,
+              shadowOffset: { width: 0, height: 0 },
+              ...(IS_WEB ? ({ boxShadow: `0 0 20px ${color}` } as any) : {}),
+            },
+          ]}
+        />
+      </View>
+    );
+  },
+);
+WaveEmitter.displayName = 'WaveEmitter';
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MODULE 2: GEOMETRIC PHYSICS ENGINE (Hexagon, Tetrahedron, Diamond)
+// ══════════════════════════════════════════════════════════════════════════════
+
+interface GeometricShapeProps {
+  type: 'hexagon' | 'tetrahedron' | 'diamond';
+  color: string;
+  size: number;
+  initialX: number;
+  initialY: number;
+  velocityX: number;
+  velocityY: number;
+  rotationSpeed: number;
+}
+
+const FloatingShape = React.memo(
+  ({
+    type,
+    color,
+    size,
+    initialX,
+    initialY,
+    velocityX,
+    velocityY,
+    rotationSpeed,
+  }: GeometricShapeProps) => {
+    const { width, height } = Dimensions.get('window');
+
+    const x = useSharedValue(initialX);
+    const y = useSharedValue(initialY);
+    const rot = useSharedValue(0);
+
+    // 120fps UI Thread loop. Ultra-smooth movement.
+    useFrameCallback((frameInfo) => {
+      if (frameInfo.timeSincePreviousFrame === null) return;
+      const dt = frameInfo.timeSincePreviousFrame / 16.66;
+
+      x.value += velocityX * dt;
+      y.value += velocityY * dt;
+      rot.value += rotationSpeed * dt;
+
+      // Smooth Boundary Wrap
+      if (x.value < -size * 2) x.value = width + size;
+      if (x.value > width + size * 2) x.value = -size;
+      if (y.value < -size * 2) y.value = height + size;
+      if (y.value > height + size * 2) y.value = -size;
+    });
+
+    const animatedStyle = useAnimatedStyle(() => {
+      return {
+        transform: [
+          { translateX: x.value },
+          { translateY: y.value },
+          { rotate: `${rot.value}deg` },
+        ],
+      };
+    });
+
+    const renderShape = () => {
+      switch (type) {
+        case 'hexagon':
+          return (
+            <Svg width={size} height={size} viewBox="0 0 100 100" fill="none">
+              <Polygon
+                points="50,5 93,25 93,75 50,95 7,75 7,25"
+                fill={`${color}10`}
+                stroke={color}
+                strokeWidth="1.5"
+                opacity="0.4"
+              />
+            </Svg>
+          );
+        case 'diamond':
+          return (
+            <Svg width={size} height={size} viewBox="0 0 100 100" fill="none">
+              <Polygon
+                points="50,5 95,50 50,95 5,50"
+                fill={`${color}10`}
+                stroke={color}
+                strokeWidth="1.5"
+                opacity="0.4"
+              />
+            </Svg>
+          );
+        case 'tetrahedron':
+          return (
+            <Svg width={size} height={size} viewBox="0 0 100 100" fill="none">
+              <Path
+                d="M 50,10 L 15,85 L 85,85 Z"
+                fill={`${color}0A`}
+                stroke={color}
+                strokeWidth="1.5"
+                opacity="0.4"
+              />
+              <Path
+                d="M 50,10 L 50,60 L 15,85"
+                stroke={color}
+                strokeWidth="1"
+                opacity="0.2"
+              />
+              <Path
+                d="M 50,60 L 85,85"
+                stroke={color}
+                strokeWidth="1"
+                opacity="0.2"
+              />
+            </Svg>
+          );
+      }
+    };
+
+    return (
+      <Animated.View
+        pointerEvents="none"
+        style={[{ position: 'absolute', top: 0, left: 0 }, animatedStyle]}
+      >
+        {renderShape()}
+      </Animated.View>
+    );
+  },
+);
+FloatingShape.displayName = 'FloatingShape';
+
+// ─── MASTER AMBIENT CONTROLLER ───
+const AmbientArchitecture = React.memo(() => {
+  const { width, height } = Dimensions.get('window');
+  const isDesktop = width >= 1024;
+
+  // Anchors - SINGLE Wave in the center.
+  const primaryX = width / 2;
+  const primaryY = isDesktop ? 160 : 180; // centered behind the SVG hero icon
+
+  const massiveWaveRadius = isDesktop ? width * 1.2 : height * 1.8;
+  const GLOBAL_WAVE_DURATION = 16000; // wave seconds
 
   return (
-    <Animated.View
-      pointerEvents="none"
-      style={[
-        animatedStyle,
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      {/* ── ONLY ONE WAVE EMITTER (Centered) ── */}
+      <WaveEmitter
+        centerX={primaryX}
+        centerY={primaryY}
+        coreSize={isDesktop ? 16 : 12}
+        color={THEME.pink} // Cyan core wave
+        maxWaveSize={massiveWaveRadius}
+        waveCount={4}
+        baseDuration={GLOBAL_WAVE_DURATION}
+      />
 
-        {
-          position: 'absolute',
-
-          width: width * 0.35,
-
-          height: width * 0.35,
-
-          backgroundColor: color,
-
-          borderRadius: width,
-        },
-      ]}
-    />
+      {/* ── 3 FLOATING SHAPES (Scaled Down & Slowed Down) ── */}
+      <FloatingShape
+        type="hexagon"
+        color={THEME.cyan}
+        size={45} // Reduced from 80/120
+        initialX={width * 0.2}
+        initialY={height * 0.3}
+        velocityX={0.06} // Slower drift
+        velocityY={0.08}
+        rotationSpeed={0.15} // Slower spin
+      />
+      <FloatingShape
+        type="tetrahedron"
+        color={THEME.purple}
+        size={55} // Reduced from 90/140
+        initialX={width * 0.75}
+        initialY={height * 0.6}
+        velocityX={-0.07} // Slower drift
+        velocityY={-0.05}
+        rotationSpeed={-0.2} // Slower spin
+      />
+      <FloatingShape
+        type="diamond"
+        color={THEME.pink}
+        size={35} // Reduced from 70/100
+        initialX={width * 0.4}
+        initialY={height * 0.8}
+        velocityX={0.09} // Slower drift
+        velocityY={-0.06}
+        rotationSpeed={0.25} // Slower spin
+      />
+    </View>
   );
-};
+});
 
-const AmbientEngine = React.memo(() => (
-  <>
-    <AmbientGradient delay={500} color="#341539" right={-150} left={-100} />
-    <AmbientGradient delay={4000} color="#8B5CF6" top={-100} right={-150} />
-    <AmbientGradient delay={8000} color="#2003fc" bottom={-150} left={-125} />
-  </>
-));
+// ══════════════════════════════════════════════════════════════════════════════
+// MODULE 3: DASHBOARD UI & INPUT ROUTING
+// ══════════════════════════════════════════════════════════════════════════════
 
 interface PipelineStatus {
   text: string;
@@ -260,14 +549,9 @@ export default function DashboardScreen() {
     'Hungarian',
   ];
 
-  // We use store ONLY for the active ID to track progress
   const { activeVideoId: currentVideoId, clearState: clearError } =
     useVideoStore();
-
-  // Real-time data for the progress bar
   const { data: videoData } = useVideoData(currentVideoId);
-
-  // The actual Engine Trigger
   const {
     mutateAsync: processVideo,
     isPending,
@@ -295,7 +579,6 @@ export default function DashboardScreen() {
     [],
   );
 
-  // ─── PIPELINE STATUS MONITORING
   useEffect(() => {
     if (videoData?.status) {
       const statusFormats: Record<string, string> = {
@@ -365,9 +648,9 @@ export default function DashboardScreen() {
       return {
         text: 'INITIALIZING',
         progress: 'w-1/12',
-        color: 'bg-blue-400',
+        color: 'bg-[#00F0FF]',
         description: 'Establishing connection to processing servers...',
-        glow: 'shadow-[0_0_15px_rgba(96,165,250,0.4)]',
+        glow: 'shadow-[0_0_15px_rgba(0,240,255,0.4)]',
       };
     }
 
@@ -377,37 +660,37 @@ export default function DashboardScreen() {
       queued: {
         text: 'QUEUED',
         progress: 'w-1/5',
-        color: 'bg-cyan-500',
+        color: 'bg-[#00F0FF]',
         description: 'Waiting for available processing resources.',
-        glow: 'shadow-[0_0_15px_rgba(59,130,246,0.4)]',
+        glow: 'shadow-[0_0_15px_rgba(0,240,255,0.4)]',
       },
       downloading: {
         text: 'FETCHING MEDIA',
         progress: 'w-2/5',
-        color: 'bg-indigo-500',
+        color: 'bg-[#8A2BE2]',
         description: 'Downloading audio and video assets.',
-        glow: 'shadow-[0_0_15px_rgba(99,102,241,0.4)]',
+        glow: 'shadow-[0_0_15px_rgba(138,43,226,0.4)]',
       },
       transcribing: {
         text: 'TRANSCRIBING',
         progress: 'w-3/5',
-        color: 'bg-violet-500',
+        color: 'bg-[#FF007F]',
         description: 'Converting speech to high-accuracy text.',
-        glow: 'shadow-[0_0_15px_rgba(139,92,246,0.4)]',
+        glow: 'shadow-[0_0_15px_rgba(255,0,127,0.4)]',
       },
       ai_processing: {
         text: 'ANALYZING',
         progress: 'w-4/5',
-        color: 'bg-purple-500',
+        color: 'bg-[#32FF00]',
         description: 'Generating chapters, summaries, and metadata.',
-        glow: 'shadow-[0_0_15px_rgba(168,85,247,0.4)]',
+        glow: 'shadow-[0_0_15px_rgba(50,255,0,0.4)]',
       },
       completed: {
         text: 'COMPLETE',
         progress: 'w-full',
-        color: 'bg-emerald-500',
+        color: 'bg-[#32FF00]',
         description: 'All tasks finished successfully.',
-        glow: 'shadow-[0_0_15px_rgba(16,185,129,0.4)]',
+        glow: 'shadow-[0_0_15px_rgba(50,255,0,0.4)]',
       },
       failed: {
         text: 'FAILED',
@@ -434,16 +717,10 @@ export default function DashboardScreen() {
     (mutationError as Error)?.message || videoData?.error_message;
 
   return (
-    <SafeAreaView className="flex-1 bg-[#01031fbe]">
-      {/* ── AMBIENT ORB DEPLOYMENT ── */}
-      <View
-        className="absolute inset-0 overflow-hidden"
-        style={{ pointerEvents: 'none' }}
-      >
-        <AmbientEngine />
-        <AmbientGradient delay={0.5} color="#3B82F6" />
-        <AmbientGradient delay={3000} color="#8B5CF6" />
-      </View>
+    <SafeAreaView className="flex-1 bg-[#010120d2]">
+      {/* ── THE ISOLATED AMBIENT KERNEL ── */}
+      {/* This renders UNDER everything and physically cannot intercept gestures */}
+      <AmbientArchitecture />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -452,19 +729,20 @@ export default function DashboardScreen() {
         <ScrollView
           contentContainerStyle={{
             padding: isMobile ? 20 : 60,
-            paddingTop: isMobile ? 140 : 100,
+            paddingTop: isMobile ? 120 : 100,
             paddingBottom: isMobile ? 140 : 200,
             flexGrow: 1,
             justifyContent: 'center',
           }}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
           <View className="justify-center w-full min-h-full">
             <FadeIn>
               <View className="items-center mb-10 md:mb-16">
-                <View className="flex-row items-center gap-3 px-4 py-2 mb-4 border rounded-full bg-gradient-to-r from-blue-500/30 to-purple-500/30 border-white/10">
-                  <SmallBadgeIcon width={20} height={20} color="#60A5FA" />
-                  <Text className="text-sm font-bold tracking-wide text-blue-400">
+                <View className="flex-row items-center gap-3 px-4 py-2 mb-4 border rounded-full bg-gradient-to-r from-[#00F0FF]/30 to-[#8A2BE2]/30 border-white/10">
+                  <SmallBadgeIcon width={20} height={20} color={THEME.cyan} />
+                  <Text className="text-sm font-bold tracking-wide text-[#00F0FF]">
                     VeraxAI Engine 1.0
                   </Text>
                 </View>
@@ -473,7 +751,7 @@ export default function DashboardScreen() {
                   {effectivelyLoading ? (
                     <ProcessingLoader
                       size={isMobile ? 80 : 120}
-                      color="#60A5FA"
+                      color={THEME.cyan}
                     />
                   ) : (
                     <FadeIn className="items-center justify-center">
@@ -482,7 +760,7 @@ export default function DashboardScreen() {
                   )}
                 </View>
 
-                <View className="h-[2px] w-16 md:w-24 bg-blue-500 mt-6 md:mt-8 rounded-full shadow-[0_0_20px_rgba(59,130,246,0.5)]" />
+                <View className="h-[2px] w-16 md:w-24 bg-[#00F0FF] mt-6 md:mt-8 rounded-full shadow-[0_0_20px_rgba(0,240,255,0.5)]" />
               </View>
             </FadeIn>
 
@@ -534,14 +812,12 @@ export default function DashboardScreen() {
                               }}
                               className={`px-5 py-2.5 rounded-xl border transition-colors ${
                                 active
-                                  ? 'bg-blue-500/20 border-blue-500/50'
-                                  : 'bg-white/[0.03] border-white/10 hover:bg-white/[0.05]'
+                                  ? 'bg-[#00F0FF]/20 border-[#00F0FF]/50'
+                                  : 'bg-white/[0.03] border-white/10'
                               }`}
                             >
                               <Text
-                                className={`text-xs font-semibold tracking-wide ${
-                                  active ? 'text-blue-400' : 'text-white/80'
-                                }`}
+                                className={`text-xs font-semibold tracking-wide ${active ? 'text-[#00F0FF]' : 'text-white/80'}`}
                               >
                                 {lang}
                               </Text>
@@ -553,16 +829,14 @@ export default function DashboardScreen() {
                       <View className="relative z-50">
                         <TouchableOpacity
                           onPress={() => {
-                            if (Platform.OS !== 'web') {
+                            if (Platform.OS !== 'web')
                               LayoutAnimation.configureNext(
                                 LayoutAnimation.Presets.easeInEaseOut,
                               );
-                            }
                             setIsDropdownOpen(!isDropdownOpen);
                           }}
                           disabled={effectivelyLoading}
-                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                          className="flex-row items-center justify-between px-5 py-4 border rounded-xl bg-white/[0.05] border-white/10 hover:bg-white/[0.08]"
+                          className="flex-row items-center justify-between px-5 py-4 border rounded-xl bg-white/[0.05] border-white/10"
                         >
                           <Text className="text-sm font-semibold tracking-wide text-white/80">
                             {selectedLanguage}
@@ -573,7 +847,7 @@ export default function DashboardScreen() {
                         </TouchableOpacity>
 
                         {isDropdownOpen && (
-                          <View className="absolute w-full mt-2 overflow-hidden border shadow-2xl rounded-xl border-white/30 bg-black/30 backdrop-blur-xl top-full">
+                          <View className="absolute w-full mt-2 overflow-hidden border shadow-2xl rounded-xl border-white/30 bg-black/80 backdrop-blur-xl top-full">
                             <ScrollView
                               style={{ maxHeight: 300 }}
                               nestedScrollEnabled
@@ -584,26 +858,17 @@ export default function DashboardScreen() {
                                   <TouchableOpacity
                                     key={lang}
                                     onPress={() => {
-                                      if (Platform.OS !== 'web') {
+                                      if (Platform.OS !== 'web')
                                         LayoutAnimation.configureNext(
                                           LayoutAnimation.Presets.easeInEaseOut,
                                         );
-                                      }
                                       setSelectedLanguage(lang);
                                       setIsDropdownOpen(false);
                                     }}
-                                    className={`px-5 py-3 border-b border-white/[0.02] ${
-                                      active
-                                        ? 'bg-blue-500/10'
-                                        : 'hover:bg-white/[0.05]'
-                                    }`}
+                                    className={`px-5 py-3 border-b border-white/[0.02] ${active ? 'bg-[#00F0FF]/10' : ''}`}
                                   >
                                     <Text
-                                      className={`text-sm font-medium ${
-                                        active
-                                          ? 'text-blue-400'
-                                          : 'text-white/70'
-                                      }`}
+                                      className={`text-sm font-medium ${active ? 'text-[#00F0FF]' : 'text-white/70'}`}
                                     >
                                       {lang}
                                     </Text>
@@ -626,12 +891,12 @@ export default function DashboardScreen() {
                     onPress={handleProcessVideo}
                     isLoading={effectivelyLoading}
                     variant="primary"
-                    className="py-5 mt-8 bg-blue-600 shadow-xl md:py-6 hover:bg-blue-500 rounded-xl"
+                    className="py-5 mt-8 bg-[#1E3A8A] shadow-[0_0_15px_rgba(138,43,226,0.5)] md:py-6 rounded-xl"
                   />
 
                   {displayError && (
                     <View className="p-5 mt-6 border bg-rose-500/10 border-rose-500/20 rounded-2xl">
-                      <Text className="mb-2 text-xs font-bold tracking-widest uppercase text-rose-400">
+                      <Text className="mb-2 text-xs font-bold tracking-widest uppercase text-pink-400">
                         Error Encountered
                       </Text>
                       <Text className="text-sm leading-5 text-rose-300/80">
@@ -655,7 +920,7 @@ export default function DashboardScreen() {
                                 'font-bold text-sm tracking-wider',
                                 videoData?.status === 'failed'
                                   ? 'text-rose-400'
-                                  : 'text-blue-400',
+                                  : 'text-[#00F0FF]',
                               )}
                             >
                               {statusInfo.text}
@@ -698,9 +963,9 @@ export default function DashboardScreen() {
                             onPress={() =>
                               router.push(`/video/${currentVideoId}` as any)
                             }
-                            className="items-center justify-center py-4 mt-8 transition-colors border rounded-xl bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/20"
+                            className="items-center justify-center py-4 mt-8 transition-colors border rounded-xl bg-[#32FF00]/10 border-[#32FF00]/30"
                           >
-                            <Text className="text-xs font-bold tracking-widest uppercase text-emerald-400">
+                            <Text className="text-xs font-bold tracking-widest uppercase text-[#32FF00]">
                               View Results
                             </Text>
                           </TouchableOpacity>
@@ -715,7 +980,7 @@ export default function DashboardScreen() {
                   <Text className="text-white/80 text-[10px] font-semibold uppercase tracking-[2px] mb-3 ml-2">
                     System Logs
                   </Text>
-                  <View className="relative p-5 overflow-hidden border bg-[#1d1d49]/60 border-white/5 rounded-2xl min-h-[120px]">
+                  <View className="relative p-5 overflow-hidden border bg-[#020205]/30 border-white/5 rounded-2xl min-h-[120px]">
                     {logs.length === 0 ? (
                       <Text className="mt-6 font-mono text-xs text-center text-white/80">
                         Awaiting input...
@@ -729,10 +994,10 @@ export default function DashboardScreen() {
                           <Text
                             className={cn(
                               'font-mono text-xs flex-1 leading-5',
-                              log.level === 'info' && 'text-cyan-400/70',
-                              log.level === 'warn' && 'text-amber-400',
-                              log.level === 'error' && 'text-rose-400',
-                              log.level === 'success' && 'text-emerald-400',
+                              log.level === 'info' && 'text-[#00F0FF]/70',
+                              log.level === 'warn' && 'text-[#FFD700]',
+                              log.level === 'error' && 'text-[#FF007F]',
+                              log.level === 'success' && 'text-[#32FF00]',
                             )}
                           >
                             {log.message}
@@ -749,7 +1014,7 @@ export default function DashboardScreen() {
       </KeyboardAvoidingView>
       <View className="absolute items-center justify-center w-full bottom-4">
         <Text className="text-[10px] text-white/80 font-mono">
-          &copy; {new Date().getFullYear()} VerAI All rights reserved
+          &copy; {new Date().getFullYear()} VeraxAI Engine 1.0
         </Text>
       </View>
     </SafeAreaView>
