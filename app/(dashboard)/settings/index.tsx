@@ -1,12 +1,15 @@
-/* app/(dashboard)/settings/index.tsx
- Lingua VertAI Settings Dashboard
-  MODULE OVERVIEW:
-  TYPES & INTERFACES: Strongly typed models for the settings cards.
-  AMBIENT ORB ENGINE: Drifting, bouncing background visualizer.
-   NATIVE SVG: Floating animated settings shield.
-  SETTINGS MODULES: Configuration array for all glass cards.
-  MAIN UI: Centered, non-stretching layout for Web & Mobile.
-        */
+/**
+ * app/(dashboard)/settings/index.tsx
+ * VeraxAI Settings Dashboard — Master Configuration
+ * ══════════════════════════════════════════════════════════════════════════════
+ * PROTOCOL:
+ * 1. NEBULA AMBIENT ENGINE: 120fps UI-thread physics using Sine/Cosine for organic drift.
+ * 2. TOUCH SAFETY: pointerEvents="none" guarantees zero UI block on all platforms.
+ * 3. ADAPTIVE LAYOUT: Core pulse anchors perfectly behind the settings shield icon.
+ * 4. STRICT THEME: Liquid Neon palette over an Obsidian (#000012) void.
+ * ══════════════════════════════════════════════════════════════════════════════
+ */
+
 import React, { useEffect, useMemo } from 'react';
 import {
   View,
@@ -15,8 +18,8 @@ import {
   TouchableOpacity,
   Dimensions,
   Platform,
+  StyleSheet,
 } from 'react-native';
-import { ArrowBigLeftDash } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { GlassCard } from '../../../components/ui/GlassCard';
 import { FadeIn } from '../../../components/animations/FadeIn';
@@ -29,6 +32,7 @@ import {
   ChevronRight,
   LifeBuoy,
   Terminal,
+  ArrowBigLeftDash,
 } from 'lucide-react-native';
 import { useAuthStore } from '../../../store/useAuthStore';
 
@@ -43,14 +47,26 @@ import Animated, {
   withDelay,
   Easing,
   withSequence,
+  useFrameCallback,
 } from 'react-native-reanimated';
 
 const AnimatedLine = Animated.createAnimatedComponent(Line);
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
+// ─── THEME CONSTANTS ─────────────────────────────────────────────────────────
+const THEME = {
+  obsidian: '#000012',
+  cyan: '#00F0FF',
+  purple: '#8A2BE2',
+  pink: '#FF007F',
+  green: '#32FF00',
+  red: '#FF3333',
+};
+
+const IS_WEB = Platform.OS === 'web';
+
 // ══════════════════════════════════════════════════════════════════════════════
 // MODULE 1: TYPESCRIPT INTERFACES
-// Defines the configuration structure for each settings card.
 // ══════════════════════════════════════════════════════════════════════════════
 interface SettingsCardItem {
   id: string;
@@ -59,84 +75,204 @@ interface SettingsCardItem {
   color: string;
   iconHex: string;
   icon: any;
-  customBg?: string; // <-- Allows injecting specific glass colors
-  customBorder?: string; // <-- Allows injecting specific border colors
+  customBg?: string;
+  customBorder?: string;
   routeOverride?: string;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// MODULE 2: AMBIENT ORB ENGINE (UPDATED TO DRIFT & BOUNCE)
-// Replicates the dashboard speed/transparency, but with smaller, wandering orbs.
-// Change color or size props in the main component to adjust visual weight.
+// MODULE 2: NEBULA AMBIENT ENGINE (Organic UI-Thread Physics)
 // ══════════════════════════════════════════════════════════════════════════════
-const AmbientOrb = ({
-  color,
-  size,
-  top,
-  left,
-  right,
-  bottom,
-  delay = 0,
-  opacity = 0.08,
-}: {
-  color: string;
-  size: number;
-  top?: number;
-  left?: number;
-  right?: number;
-  bottom?: number;
-  delay?: number;
-  opacity?: number;
-}) => {
-  const { width, height } = Dimensions.get('window');
-  const drift = useSharedValue(0);
 
-  React.useEffect(() => {
-    // 9-second slow drift matching the Dashboard engine speed
-    drift.value = withDelay(
+const CorePulse = ({ delay, color, size, centerX, centerY }: any) => {
+  const pulse = useSharedValue(0);
+
+  useEffect(() => {
+    pulse.value = withDelay(
       delay,
       withRepeat(
-        withTiming(1, { duration: 9000, easing: Easing.inOut(Easing.sin) }),
+        withTiming(1, { duration: 8000, easing: Easing.out(Easing.cubic) }),
         -1,
-        true,
+        false,
       ),
     );
-  }, [delay, drift]);
+  }, [delay, pulse]);
 
-  const anim = useAnimatedStyle(() => ({
-    transform: [
-      // Translates to simulate wandering/bouncing off invisible walls
-      { translateX: interpolate(drift.value, [0, 1], [0, width * 0.25]) },
-      { translateY: interpolate(drift.value, [0, 1], [0, height * 0.15]) },
-      { scale: interpolate(drift.value, [0, 1], [0.85, 1.15]) },
-    ],
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: interpolate(pulse.value, [0, 1], [0.8, 2.5]) }],
+    opacity: interpolate(pulse.value, [0, 0.4, 1], [0.3, 0.1, 0]),
   }));
 
   return (
     <Animated.View
       style={[
+        animatedStyle,
         {
           position: 'absolute',
+          left: centerX - size / 2,
+          top: centerY - size / 2,
           width: size,
           height: size,
-          borderRadius: size,
-          backgroundColor: color,
-          opacity,
-          top,
-          left,
-          right,
-          bottom,
-          pointerEvents: 'none', 
+          borderRadius: size / 2,
+          backgroundColor: `${color}15`, // Faint solid fill instead of border for a smoother glow
+          ...(IS_WEB ? ({ filter: 'blur(20px)' } as any) : {}),
         },
-        anim,
       ]}
     />
   );
 };
 
+interface OrganicOrbProps {
+  color: string;
+  size: number;
+  initialX: number;
+  initialY: number;
+  speedX: number;
+  speedY: number;
+  phaseOffsetX: number;
+  phaseOffsetY: number;
+  opacityBase: number;
+}
+
+const OrganicOrb = ({
+  color,
+  size,
+  initialX,
+  initialY,
+  speedX,
+  speedY,
+  phaseOffsetX,
+  phaseOffsetY,
+  opacityBase,
+}: OrganicOrbProps) => {
+  const { width, height } = Dimensions.get('window');
+  const time = useSharedValue(0);
+
+  // 120fps UI Thread loop utilizing Sine/Cosine for smooth, non-linear drifting
+  useFrameCallback((frameInfo) => {
+    if (frameInfo.timeSincePreviousFrame === null) return;
+    // Increment time; scale down the delta so the movement is slow and elegant
+    time.value += frameInfo.timeSincePreviousFrame / 1000;
+  });
+
+  const animatedStyle = useAnimatedStyle(() => {
+    // Calculate organic positions using Lissajous curves (Math.sin / Math.cos)
+    // This creates a smooth "figure-8" or looping orbit that never hard-bounces.
+    const xOffset =
+      Math.sin(time.value * speedX + phaseOffsetX) * (width * 0.3);
+    const yOffset =
+      Math.cos(time.value * speedY + phaseOffsetY) * (height * 0.2);
+
+    // Add a breathing effect to the scale
+    const breathe = 1 + Math.sin(time.value * 0.5) * 0.15;
+
+    return {
+      transform: [
+        { translateX: initialX + xOffset },
+        { translateY: initialY + yOffset },
+        { scale: breathe },
+      ],
+      // Opacity pulses slightly as it breathes
+      opacity: opacityBase + Math.sin(time.value * 0.5) * 0.02,
+    };
+  });
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        {
+          position: 'absolute',
+          top: -size / 2,
+          left: -size / 2,
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          backgroundColor: color,
+          ...(IS_WEB ? ({ filter: 'blur(60px)' } as any) : {}), // Massive blur for the "Nebula" look
+        },
+        animatedStyle,
+      ]}
+    />
+  );
+};
+
+const AmbientArchitecture = React.memo(() => {
+  const { width, height } = Dimensions.get('window');
+  const isDesktop = width >= 1024;
+
+  // Dynamically calculate the center of the Settings Shield Icon
+  const coreX = width / 2;
+  // Mobile needs a smaller offset because the icon is higher up the screen
+  const coreY = isDesktop ? 160 : 120;
+  const basePulseSize = isDesktop ? 300 : 200;
+
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      {/* ── CORE BREATHING PULSES (Anchored exactly behind the shield) ── */}
+      <CorePulse
+        delay={0}
+        color={THEME.cyan}
+        size={basePulseSize}
+        centerX={coreX}
+        centerY={coreY}
+      />
+      <CorePulse
+        delay={2500}
+        color={THEME.purple}
+        size={basePulseSize}
+        centerX={coreX}
+        centerY={coreY}
+      />
+      <CorePulse
+        delay={5000}
+        color={THEME.pink}
+        size={basePulseSize}
+        centerX={coreX}
+        centerY={coreY}
+      />
+
+      {/* ── ORGANIC DRIFTING NEBULAS ── */}
+      {/* These use Sine/Cosine to orbit smoothly without ever touching an edge */}
+      <OrganicOrb
+        color={THEME.cyan}
+        size={width * 0.5}
+        initialX={width * 0.6}
+        initialY={height * 0.3}
+        speedX={0.2}
+        speedY={0.15}
+        phaseOffsetX={0}
+        phaseOffsetY={Math.PI / 2}
+        opacityBase={0.06}
+      />
+      <OrganicOrb
+        color={THEME.purple}
+        size={width * 0.6}
+        initialX={width * 0.8}
+        initialY={height * 0.4}
+        speedX={0.15}
+        speedY={0.25}
+        phaseOffsetX={Math.PI}
+        phaseOffsetY={0}
+        opacityBase={0.08}
+      />
+      <OrganicOrb
+        color={THEME.pink}
+        size={width * 0.4}
+        initialX={width * 0.4}
+        initialY={height * 0.8}
+        speedX={0.25}
+        speedY={0.1}
+        phaseOffsetX={Math.PI / 4}
+        phaseOffsetY={Math.PI}
+        opacityBase={0.05}
+      />
+    </View>
+  );
+});
+
 // ══════════════════════════════════════════════════════════════════════════════
-// MODULE 3: EXACT SHIELD/NETWORK SVG WITH ANIMATION
-// Handles the floating/pulsing settings icon graphic.
+// MODULE 3: SETTINGS SHIELD SVG
 // ══════════════════════════════════════════════════════════════════════════════
 const AnimatedSettingsIcon = () => {
   const floatY = useSharedValue(0);
@@ -145,9 +281,8 @@ const AnimatedSettingsIcon = () => {
   useEffect(() => {
     floatY.value = withRepeat(
       withSequence(
-        withTiming(-6, { duration: 100, easing: Easing.inOut(Easing.ease) }),
-        withTiming(6, { duration: 500, easing: Easing.inOut(Easing.ease) }),
-        withTiming(0, { duration: 2500, easing: Easing.inOut(Easing.ease) }),
+        withTiming(-6, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
+        withTiming(6, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
       ),
       -1,
       true,
@@ -183,7 +318,13 @@ const AnimatedSettingsIcon = () => {
 
   return (
     <View
-      style={{ width: 140, height: 140, alignSelf: 'center', marginBottom: 24 }}
+      style={{
+        width: 140,
+        height: 140,
+        alignSelf: 'center',
+        marginBottom: 24,
+        zIndex: 10,
+      }}
     >
       <View
         style={{
@@ -287,8 +428,7 @@ const AnimatedSettingsIcon = () => {
 };
 
 // ══════════════════════════════════════════════════════════════════════════════
-// MODULE 4: MAIN SCREEN COMPONENT & CARD CONFIGURATION
-// Contains the central layout and the exact glass-card color mappings.
+// MODULE 4: MAIN SCREEN COMPONENT
 // ══════════════════════════════════════════════════════════════════════════════
 export default function SettingsHubScreen() {
   const router = useRouter();
@@ -298,9 +438,6 @@ export default function SettingsHubScreen() {
   const { profile } = useAuthStore();
   const userRole = profile?.role || 'member';
 
-  // ─── CARD COLOR CONFIGURATION ───
-  // Update customBg (background) and customBorder (stroke) here.
-  // Using 08/0C hex suffix for subtle glass transparency (e.g., #00F0FF08).
   const SETTING_MODULES: SettingsCardItem[] = useMemo(() => {
     const modules: SettingsCardItem[] = [
       {
@@ -308,40 +445,40 @@ export default function SettingsHubScreen() {
         title: 'USER',
         desc: 'Avatar, Bio',
         color: 'cyan',
-        iconHex: '#00F0FF',
+        iconHex: THEME.cyan,
         icon: User,
-        customBg: '#00F0FF08', // Light blue glass (Cyan)
-        customBorder: '#00F0FF25',
+        customBg: `${THEME.cyan}08`,
+        customBorder: `${THEME.cyan}25`,
       },
       {
         id: 'security',
         title: 'Security',
         desc: 'Account Security, Biometrics, API Keys',
         color: 'pink',
-        iconHex: '#FF007F',
+        iconHex: THEME.pink,
         icon: ShieldCheck,
-        customBg: '#FF007F08', // Pink/Red glass
-        customBorder: '#FF007F25',
+        customBg: `${THEME.pink}08`,
+        customBorder: `${THEME.pink}25`,
       },
       {
         id: 'billing',
         title: 'BILLING & TOKENS',
         desc: 'System Tiers, Quotas, Usage',
         color: 'purple',
-        iconHex: '#8A2BE2',
+        iconHex: THEME.purple,
         icon: Cpu,
-        customBg: '#8A2BE208', // Purple glass
-        customBorder: '#8A2BE225',
+        customBg: `${THEME.purple}08`,
+        customBorder: `${THEME.purple}25`,
       },
       {
         id: 'support',
         title: 'SUPPORT',
         desc: 'Help Desk, Active Tickets',
         color: 'green',
-        iconHex: '#32FF00',
+        iconHex: THEME.green,
         icon: LifeBuoy,
-        customBg: '#32FF0008', // Green glass
-        customBorder: '#32FF0025',
+        customBg: `${THEME.green}08`,
+        customBorder: `${THEME.green}25`,
       },
     ];
 
@@ -351,10 +488,10 @@ export default function SettingsHubScreen() {
         title: 'ADMIN',
         desc: 'Global Telemetry, User Directory',
         color: 'red',
-        iconHex: '#FF3333',
+        iconHex: THEME.red,
         icon: Terminal,
-        customBg: '#FF333308', // Dark Red glass
-        customBorder: '#FF333325',
+        customBg: `${THEME.red}08`,
+        customBorder: `${THEME.red}25`,
         routeOverride: '/admin',
       });
     }
@@ -363,48 +500,19 @@ export default function SettingsHubScreen() {
   }, [userRole]);
 
   return (
-    <SafeAreaView className="flex-1 bg-[#000011]">
-      {/* ── AMBIENT ORB DEPLOYMENT ──
-Smaller sizes (180-220), varied start points, random delays for bouncing effect.
-Change the color or size properties here to modify the background. */}
-      <View
-        className="absolute inset-0 overflow-hidden"
-        style={{ pointerEvents: 'none' }}
-      >
-        <AmbientOrb
-          color="#00F0FF" // Cyan
-          size={200}
-          top={-50}
-          left={-50}
-          opacity={0.06}
-          delay={0}
-        />
-        <AmbientOrb
-          color="#8A2BE2" // Purple
-          size={180}
-          top={250}
-          right={-60}
-          opacity={0.07}
-          delay={2000}
-        />
-        <AmbientOrb
-          color="#054aeb" // Deep Blue
-          size={220}
-          bottom={100}
-          left={-40}
-          opacity={0.05}
-          delay={4000}
-        />
-      </View>
+    <SafeAreaView className="flex-1 bg-[#000012]">
+      {/* ── ISOLATED AMBIENT KERNEL ── */}
+      {/* Physically rendered beneath the ScrollView, pointerEvents="none" guarantees zero touch overlap */}
+      <AmbientArchitecture />
 
       {/* ── MAIN CONTENT LAYER ── */}
       <View className="flex-1 w-full" style={{ flex: 1 }}>
         <ScrollView
           style={{ flex: 1, width: '100%' }}
-          keyboardShouldPersistTaps="handled" // Keep this one!
+          keyboardShouldPersistTaps="handled"
           contentContainerStyle={{
             padding: isMobile ? 16 : 60,
-            paddingTop: isMobile ? 100 : 100,
+            paddingTop: isMobile ? 60 : 80,
             paddingBottom: isMobile ? 140 : 200,
             flexGrow: 1,
             alignItems: 'center',
@@ -413,15 +521,15 @@ Change the color or size properties here to modify the background. */}
         >
           <FadeIn>
             <View className="items-center w-full max-w-2xl mb-10 md:mb-16">
-              <View className="px-5 py-1.5 mb-8 border rounded-full bg-cyan-500/10 border-cyan-500/20">
-                <Text className="text-[9px] md:text-[10px] font-black tracking-[5px] text-cyan-400 uppercase">
+              <View className="px-5 py-1.5 mb-8 border rounded-full bg-[#00F0FF]/10 border-[#00F0FF]/20">
+                <Text className="text-[9px] md:text-[10px] font-black tracking-[5px] text-[#00F0FF] uppercase">
                   SETTINGS
                 </Text>
               </View>
 
               <AnimatedSettingsIcon />
 
-              <View className="h-[2px] w-20 bg-cyan-400 mt-6 md:mt-8 rounded-full shadow-[0_0_20px_#00F0FF]" />
+              <View className="h-[2px] w-20 bg-[#00F0FF] mt-6 md:mt-8 rounded-full shadow-[0_0_20px_#00F0FF]" />
             </View>
           </FadeIn>
 
@@ -432,9 +540,10 @@ Change the color or size properties here to modify the background. */}
               }
               className="flex-row items-center mb-10 gap-x-2"
               activeOpacity={0.7}
+              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
             >
-              <ArrowBigLeftDash size={18} color="#00F0FF" />
-              <Text className="text-[10px] font-black tracking-[4px] text-cyan-400 uppercase">
+              <ArrowBigLeftDash size={18} color={THEME.cyan} />
+              <Text className="text-[10px] font-black tracking-[4px] text-[#00F0FF] uppercase">
                 Return
               </Text>
             </TouchableOpacity>
@@ -454,7 +563,6 @@ Change the color or size properties here to modify the background. */}
                     }}
                     activeOpacity={0.8}
                     delayPressIn={0}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                   >
                     <GlassCard
                       glowColor={mod.color as any}
@@ -467,12 +575,9 @@ Change the color or size properties here to modify the background. */}
                             }
                           : {}
                       }
-                      // Flex layout forces row, justify-between handles spacing
                       className="flex-row items-center justify-between p-4 transition-all md:p-8 hover:bg-white/[0.04] rounded-3xl"
                     >
-                      {/* LEFT SIDE: Group Icon and Text together */}
                       <View className="flex-row items-center flex-1 pr-2 shrink">
-                        {/* Icon Container - Responsive sizing */}
                         <View
                           style={
                             mod.customBg
@@ -492,7 +597,6 @@ Change the color or size properties here to modify the background. */}
                           <mod.icon size={20} color={mod.iconHex} />
                         </View>
 
-                        {/* Text Content - Shrink allows it to compress instead of pushing the chevron out */}
                         <View className="flex-1 shrink">
                           <Text
                             className="mb-1 text-sm font-bold tracking-wider text-white uppercase md:tracking-widest md:text-xl"
@@ -509,7 +613,6 @@ Change the color or size properties here to modify the background. */}
                         </View>
                       </View>
 
-                      {/* RIGHT SIDE: Action Chevron - Shrink-0 ensures it never gets crushed */}
                       <View className="items-center justify-center w-8 h-8 rounded-full md:w-10 md:h-10 bg-white/[0.02] border border-white/5 shrink-0">
                         <ChevronRight size={18} color="#ffffff50" />
                       </View>

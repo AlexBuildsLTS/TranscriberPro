@@ -1,6 +1,6 @@
 /**
  * app/(dashboard)/admin/users.tsx
- * VerAI - Identity Registry & Access Control
+ * VeraxAI - Identity Registry & Access Control
  * ----------------------------------------------------------------------------
  * MODULE OVERVIEW:
  * 1. AMBIENT ENGINE: Liquid Neon Orbs; 100% APK Touch-Safe (`pointerEvents: 'none'`).
